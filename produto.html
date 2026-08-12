@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produto | VM Click</title>
+<meta name="description" content="Ficha completa do produto: especificações técnicas, preço, formas de pagamento e simulação de frete.">
+<link rel="icon" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body class="single-product">
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <div class="container">
+    <nav class="woocommerce-breadcrumb" id="migalha" aria-label="Você está aqui"></nav>
+  </div>
+
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="pdp" id="pdp"></div>
+    </div>
+  </section>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="sec-head sec-head--split" style="margin-bottom:24px">
+        <div>
+          <span class="eyebrow">Quem viu, viu também</span>
+          <h2>Produtos relacionados</h2>
+        </div>
+        <a class="btn btn--outline" href="produtos.html">Ver catálogo</a>
+      </div>
+      <ul class="products" id="relacionados"></ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  VM.initPDP();
+  if (window.VMAnim) VMAnim.cards('#relacionados');
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

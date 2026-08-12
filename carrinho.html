@@ -1,0 +1,141 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrinho | VM Click</title>
+<meta name="description" content="Itens selecionados na loja VM Click.">
+<link rel="icon" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body class="woocommerce-cart">
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <span aria-current="page">Carrinho</span>
+      </nav>
+      <h1>Seu carrinho</h1>
+      <p>Confira os itens, ajuste as quantidades e siga para o fechamento do pedido.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div id="carrinho-conteudo"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  var alvo = document.getElementById('carrinho-conteudo');
+
+  function linha(l) {
+    return '' +
+    '<div class="cart-row" data-slug="' + l.p.slug + '">' +
+      '<div class="cart-row__thumb">' + VM.ico(l.p.icone) + '</div>' +
+      '<div>' +
+        '<a class="cart-row__name" href="produto.html?p=' + l.p.slug + '">' + l.p.nome + '</a>' +
+        '<div class="cart-row__meta">' + l.p.marca + ' · cód. ' + l.p.sku + ' · ' + VM.money(l.p.preco) + ' / ' + l.p.unidade + '</div>' +
+      '</div>' +
+      '<div class="cart-row__qty">' +
+        '<div class="qty">' +
+          '<button type="button" data-menos aria-label="Diminuir">−</button>' +
+          '<input type="number" value="' + l.qtd + '" min="1" max="' + l.p.estoque + '" aria-label="Quantidade de ' + l.p.nome + '">' +
+          '<button type="button" data-mais aria-label="Aumentar">+</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cart-row__sub num">' + VM.money(l.sub) + '</div>' +
+      '<div class="cart-row__rm">' +
+        '<button class="btn-icon" type="button" data-remover aria-label="Remover ' + l.p.nome + '">' + VM.icon('fechar') + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function render() {
+    var linhas = VMCart.linhas();
+
+    if (!linhas.length) {
+      alvo.innerHTML =
+        '<div class="empty-state">' + VM.icon('carrinho') +
+        '<h3>Seu carrinho está vazio</h3>' +
+        '<p class="muted" style="margin-top:8px;max-width:44ch;margin-inline:auto">' +
+        'Comece pelo catálogo ou fale com o atendimento técnico se precisar de ajuda com a lista da obra.</p>' +
+        '<div class="row" style="justify-content:center;margin-top:24px">' +
+        '<a class="btn btn--primary" href="produtos.html">Ver produtos</a>' +
+        '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar no WhatsApp</a>' +
+        '</div></div>';
+      return;
+    }
+
+    var frete = VMCart.frete();
+    var falta = VMCart.faltaFreteGratis();
+
+    alvo.innerHTML =
+    '<div class="cart-layout">' +
+      '<div class="stack-6">' +
+        '<div class="cart-table">' + linhas.map(linha).join('') + '</div>' +
+        '<div class="row" style="justify-content:space-between">' +
+          '<a class="btn btn--ghost" href="produtos.html">← Continuar comprando</a>' +
+          '<button class="btn btn--danger btn--sm" type="button" id="limpar-carrinho">Esvaziar carrinho</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<aside class="summary">' +
+        '<h3>Resumo do pedido</h3>' +
+        '<div class="summary__row"><span>Subtotal (' + VMCart.quantidade() + ' itens)</span><b>' + VM.money(VMCart.subtotal()) + '</b></div>' +
+        '<div class="summary__row"><span>Frete estimado</span><b>' + (frete === 0 ? 'Grátis' : VM.money(frete)) + '</b></div>' +
+        (falta > 0
+          ? '<p style="font-size:13px;color:var(--text-muted)">Faltam <b>' + VM.money(falta) + '</b> para frete grátis.</p>'
+          : '<p style="font-size:13px;color:var(--success);font-weight:600">Frete grátis aplicado.</p>') +
+        '<div class="coupon">' +
+          '<label class="sr-only" for="cupom">Cupom de desconto</label>' +
+          '<input id="cupom" placeholder="Cupom de desconto">' +
+          '<button class="btn btn--outline btn--sm" type="button" id="aplicar-cupom">Aplicar</button>' +
+        '</div>' +
+        '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(VMCart.total()) + '</span></div>' +
+        '<p style="font-size:13px;color:var(--success);font-weight:600">' + VM.money(VMCart.total() * 0.95) + ' à vista no Pix</p>' +
+        '<a class="btn btn--primary btn--lg btn--block" href="finalizar.html">Finalizar compra</a>' +
+        '<p class="mono subtle" style="text-align:center">Ambiente de demonstração - nenhum pagamento é processado.</p>' +
+      '</aside>' +
+    '</div>';
+
+    var limpar = document.getElementById('limpar-carrinho');
+    if (limpar) limpar.addEventListener('click', function () { VMCart.limpar(); });
+
+    var cupom = document.getElementById('aplicar-cupom');
+    if (cupom) cupom.addEventListener('click', function () {
+      VM.toast('Cupons entram na fase 2, junto com o checkout real.', 'warn');
+    });
+  }
+
+  render();
+  document.addEventListener('vm:cart', render);
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>
+

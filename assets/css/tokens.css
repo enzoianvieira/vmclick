@@ -1,0 +1,166 @@
+﻿/* ==========================================================================
+   VM Click - Design Tokens v1
+   Fonte única de verdade. Espelhado em theme.json na build WordPress.
+   ========================================================================== */
+
+:root {
+  /* --- Marca (extraído do logo) ----------------------------------------- */
+  --vm-red:   #E63337;
+  --vm-teal:  #076E65;
+  --vm-black: #111111;
+
+  /* --- Teal (primária institucional) ------------------------------------ */
+  --teal-50:  #F0FAF8;
+  --teal-100: #DCF3EF;
+  --teal-200: #B4E6DE;
+  --teal-300: #7FD3C7;
+  --teal-400: #41B6A7;
+  --teal-500: #149A8B;
+  --teal-600: #0A8377;
+  --teal-700: #076E65; /* marca */
+  --teal-800: #065950;
+  --teal-900: #04403A;
+  --teal-950: #022825;
+
+  /* --- Red (ação / conversão) ------------------------------------------- */
+  --red-50:  #FEF3F3;
+  --red-100: #FDE4E4;
+  --red-200: #FBCCCD;
+  --red-300: #F7A5A7;
+  --red-400: #F17376;
+  --red-500: #EA4A4E;
+  --red-600: #E63337; /* marca */
+  --red-700: #C21F23;
+  --red-800: #9E1C1F;
+  --red-900: #7C1A1D;
+
+  /* --- Neutros ----------------------------------------------------------- */
+  --n-0:   #FFFFFF;
+  --n-50:  #F7F9F9;
+  --n-100: #EFF2F2;
+  --n-200: #E1E6E6;
+  --n-300: #C6CFCF;
+  --n-400: #9AA5A5;
+  --n-500: #71807F;
+  --n-600: #54615F;
+  --n-700: #3A4645;
+  --n-800: #242E2D;
+  --n-900: #141B1A;
+  --n-950: #0A0F0F;
+
+  /* --- Semânticas -------------------------------------------------------- */
+  --success:    #127A3E;
+  --success-bg: #E8F5EE;
+  --warning:    #B4690E;
+  --warning-bg: #FDF3E4;
+  --danger:     #B3261E;
+  --danger-bg:  #FCEDEC;
+  --info:       #0B5E8A;
+  --info-bg:    #E7F2F8;
+  --promo:      #E63337;
+  --whatsapp:   #25D366;
+
+  /* --- Papéis semânticos de superfície/texto ----------------------------- */
+  --bg-page:      var(--n-0);
+  --bg-subtle:    var(--n-50);
+  --bg-muted:     var(--n-100);
+  --bg-inverse:   var(--n-950);
+  --surface:      var(--n-0);
+  --border:       var(--n-200);
+  --border-strong:var(--n-300);
+  --text:         var(--n-800);
+  --text-body:    var(--n-700);
+  --text-muted:   var(--n-600);
+  --text-subtle:  var(--n-500);
+  --text-inverse: var(--n-0);
+  --link:         var(--teal-700);
+  --link-hover:   var(--teal-800);
+
+  /* --- Tipografia --------------------------------------------------------- */
+  --font-display: "Poppins", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-body:    "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  --font-mono:    ui-monospace, "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  --fs-display: 3.5rem;   /* 56 */
+  --fs-h1:      2.75rem;  /* 44 */
+  --fs-h2:      2.125rem; /* 34 */
+  --fs-h3:      1.625rem; /* 26 */
+  --fs-h4:      1.25rem;  /* 20 */
+  --fs-lg:      1.125rem; /* 18 */
+  --fs-base:    1rem;     /* 16 */
+  --fs-sm:      0.875rem; /* 14 */
+  --fs-xs:      0.75rem;  /* 12 */
+  --fs-price:   1.75rem;  /* 28 */
+
+  --lh-tight:   1.15;
+  --lh-snug:    1.3;
+  --lh-normal:  1.6;
+  --ls-tight:  -0.02em;
+  --ls-wide:    0.06em;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+
+  --measure: 68ch;
+
+  /* --- Espaçamento (base 4px) --------------------------------------------- */
+  --sp-1:  0.25rem;  --sp-2:  0.5rem;   --sp-3:  0.75rem;  --sp-4:  1rem;
+  --sp-5:  1.25rem;  --sp-6:  1.5rem;   --sp-8:  2rem;     --sp-10: 2.5rem;
+  --sp-12: 3rem;     --sp-16: 4rem;     --sp-20: 5rem;     --sp-24: 6rem;
+  --sp-32: 8rem;
+
+  --section-y:  var(--sp-16);
+  --gutter:     var(--sp-4);
+  --grid-gap:   var(--sp-6);
+
+  /* --- Layout -------------------------------------------------------------- */
+  --container-max: 1280px;
+  --container-wide: 1440px;
+  --header-h: 80px;
+  --header-h-sticky: 64px;
+
+  /* --- Raios ---------------------------------------------------------------- */
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 24px; --r-pill: 999px;
+
+  /* --- Sombras -------------------------------------------------------------- */
+  --sh-xs:    0 1px 2px rgba(10,15,15,.06);
+  --sh-sm:    0 2px 6px rgba(10,15,15,.07);
+  --sh-md:    0 6px 16px rgba(10,15,15,.09);
+  --sh-lg:    0 14px 32px rgba(10,15,15,.12);
+  --sh-focus: 0 0 0 3px rgba(7,110,101,.32);
+
+  /* --- Movimento ------------------------------------------------------------ */
+  --dur-fast: 120ms;
+  --dur:      200ms;
+  --dur-slow: 320ms;
+  --ease:     cubic-bezier(.2,.7,.3,1);
+
+  /* --- Z-index -------------------------------------------------------------- */
+  --z-base: 1; --z-sticky: 100; --z-drawer: 200; --z-modal: 300; --z-toast: 400; --z-fab: 90;
+}
+
+/* Escala fluida no mobile */
+@media (max-width: 767px) {
+  :root {
+    --fs-display: 2.25rem; /* 36 */
+    --fs-h1:      2rem;    /* 32 */
+    --fs-h2:      1.625rem;/* 26 */
+    --fs-h3:      1.375rem;/* 22 */
+    --fs-h4:      1.125rem;/* 18 */
+    --fs-lg:      1.0625rem;
+    --fs-price:   1.5rem;
+    --section-y:  var(--sp-12);
+    --header-h:   64px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root { --section-y: var(--sp-24); --gutter: var(--sp-8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur: 0ms; --dur-slow: 0ms; }
+}
+

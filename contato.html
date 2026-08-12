@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contato | VM Click</title>
+<meta name="description" content="Fale com a VM Click: (41) 3089-2453, WhatsApp (41) 99892-0006, contato@vmclick.com.br. Loja na R. Amadeu do Amaral, 1602, Portão, Curitiba.">
+<link rel="icon" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <span aria-current="page">Contato</span>
+      </nav>
+      <h1>Vamos conversar</h1>
+      <p>Dúvida técnica, orçamento de lista ou pedido especial: fale com a loja pelo canal que preferir.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container contact-grid">
+
+      <div class="stack-8">
+        <div>
+          <span class="eyebrow">Canais diretos</span>
+          <h2 style="margin-top:12px">Atendimento</h2>
+        </div>
+
+        <ul class="contact-list" id="canais"></ul>
+
+        <div class="row">
+          <a class="btn btn--wa btn--lg" id="btn-wa" href="#">Abrir conversa no WhatsApp</a>
+        </div>
+
+        <div class="map-embed">
+          <div class="map-pin">
+            <span id="pin"></span>
+            <b>R. Amadeu do Amaral, 1602</b>
+            <span>Portão · Curitiba/PR</span>
+            <span class="mono subtle" style="margin-top:8px">Mapa interativo entra na versão final</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="margin-bottom:24px">
+          <span class="eyebrow">Formulário</span>
+          <h2 style="margin-top:12px">Envie sua solicitação</h2>
+          <p class="muted" style="margin-top:12px">
+            Responderemos no horário comercial. Para orçamento de lista, informe as quantidades no campo de mensagem.
+          </p>
+        </div>
+
+        <form class="panel stack-6" id="form-contato" novalidate>
+          <div class="field-grid field-grid--2">
+            <div class="field">
+              <label for="your-name">Nome <span class="req">*</span></label>
+              <input id="your-name" name="your-name" autocomplete="name" placeholder="Seu nome">
+              <span class="err">Informe seu nome.</span>
+            </div>
+            <div class="field">
+              <label for="your-phone">Telefone <span class="req">*</span></label>
+              <input id="your-phone" name="your-phone" inputmode="tel" autocomplete="tel" placeholder="(41) 90000-0000">
+              <span class="err">Informe um telefone para retorno.</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="your-email">E-mail <span class="req">*</span></label>
+            <input id="your-email" name="your-email" type="email" autocomplete="email" placeholder="voce@email.com">
+            <span class="err">Informe um e-mail válido.</span>
+          </div>
+
+          <div class="field">
+            <label for="assunto">Assunto</label>
+            <select id="assunto" name="assunto">
+              <option>Orçamento de material</option>
+              <option>Dúvida técnica</option>
+              <option>Projeto de iluminação</option>
+              <option>Pedido feito no site</option>
+              <option>Outro assunto</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="your-message">Mensagem <span class="req">*</span></label>
+            <textarea id="your-message" name="your-message" placeholder="Descreva o que você precisa. Se for uma lista, informe item e quantidade."></textarea>
+            <span class="err">Escreva sua mensagem.</span>
+          </div>
+
+          <label class="filter-opt" style="padding:0;align-items:flex-start">
+            <input type="checkbox" id="lgpd" style="margin-top:3px">
+            <span style="font-size:13px;color:var(--text-muted)">
+              Autorizo o contato da VM Click sobre esta solicitação, conforme a
+              <a href="politica.html">política de privacidade</a>.
+            </span>
+          </label>
+
+          <button class="btn btn--primary btn--lg" type="submit">Enviar mensagem</button>
+          <p class="mono subtle">Demonstração: o envio é simulado e nenhuma mensagem é transmitida.</p>
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section section--tight section--subtle">
+    <div class="container">
+      <div class="trust reveal" id="horarios"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  var E = VM.EMPRESA;
+
+  var canais = [
+    { i: 'telefone', t: 'Telefone da loja',  v: E.fone, h: 'tel:4130892453' },
+    { i: 'whatsapp', t: 'WhatsApp / celular', v: E.cel, h: E.whatsapp },
+    { i: 'email',    t: 'E-mail',            v: E.email, h: 'mailto:' + E.email },
+    { i: 'local',    t: 'Endereço',          v: E.endereco, h: null },
+    { i: 'relogio',  t: 'Horário',           v: E.horario, h: null }
+  ];
+
+  document.getElementById('canais').innerHTML = canais.map(function (c) {
+    var valor = c.h
+      ? '<a href="' + c.h + '"' + (c.h.indexOf('http') === 0 ? ' target="_blank" rel="noopener"' : '') + '>' + c.v + '</a>'
+      : '<span>' + c.v + '</span>';
+    return '<li><span class="ic">' + VM.icon(c.i) + '</span><div><b>' + c.t + '</b>' + valor + '</div></li>';
+  }).join('');
+
+  document.getElementById('pin').innerHTML = VM.icon('local');
+  document.getElementById('btn-wa').href = E.whatsapp;
+
+  var horarios = [
+    { i: 'relogio', k: 'Segunda a sexta', v: '09:00 às 18:00' },
+    { i: 'loja',    k: 'Sábado',          v: 'Consulte a loja pelo WhatsApp' },
+    { i: 'caminhao',k: 'Entregas',        v: 'Curitiba e região metropolitana' },
+    { i: 'atendente', k: 'Televendas',    v: 'Atendimento técnico por telefone' }
+  ];
+  document.getElementById('horarios').innerHTML = horarios.map(function (t) {
+    return '<div class="trust__item">' + VM.icon(t.i) +
+      '<div><div class="trust__k">' + t.k + '</div><div class="trust__v">' + t.v + '</div></div></div>';
+  }).join('');
+
+  /* validação do formulário (envio simulado) */
+  document.getElementById('form-contato').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var ok = true;
+
+    [['your-name', function (v) { return v.trim().length > 1; }],
+     ['your-phone', function (v) { return v.replace(/\D/g, '').length >= 10; }],
+     ['your-email', function (v) { return /.+@.+\..+/.test(v); }],
+     ['your-message', function (v) { return v.trim().length > 4; }]
+    ].forEach(function (par) {
+      var el = document.getElementById(par[0]);
+      var valido = par[1](el.value);
+      el.closest('.field').classList.toggle('is-invalid', !valido);
+      if (!valido && ok) { el.focus(); ok = false; }
+    });
+
+    if (!document.getElementById('lgpd').checked) {
+      VM.toast('Autorize o contato para enviar a mensagem.', 'warn');
+      return;
+    }
+    if (!ok) { VM.toast('Confira os campos destacados.', 'warn'); return; }
+
+    this.innerHTML =
+      '<div class="done-box" style="padding:32px 0">' +
+        '<div class="done-box__ico">' + VM.icon('check') + '</div>' +
+        '<h3>Mensagem registrada</h3>' +
+        '<p class="muted" style="margin-top:12px">' +
+        'Na versão final, esta mensagem chega em <b>' + E.email + '</b> e no painel do WordPress. ' +
+        'Nesta demonstração nada é enviado.</p>' +
+        '<a class="btn btn--wa" style="margin-top:24px" href="' + E.whatsapp + '" target="_blank" rel="noopener">' +
+        'Prefere resposta na hora? Chame no WhatsApp</a>' +
+      '</div>';
+  });
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

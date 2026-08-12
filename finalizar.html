@@ -1,0 +1,257 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finalizar compra | VM Click</title>
+<meta name="description" content="Fechamento de pedido - ambiente de demonstração.">
+<link rel="icon" href="assets/img/logo.svg">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body class="woocommerce-checkout">
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <a href="carrinho.html">Carrinho</a><span class="sep">/</span>
+        <span aria-current="page">Finalizar</span>
+      </nav>
+      <h1>Finalizar compra</h1>
+      <p>Fluxo completo de checkout em três passos. Nesta versão nada é cobrado e nenhum pedido é enviado.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container" id="checkout"></div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  var raiz = document.getElementById('checkout');
+  var passo = 1;
+  var pagamento = 'pix';
+
+  var PASSOS = ['Identificação', 'Entrega', 'Pagamento'];
+
+  function barraPassos() {
+    return '<div class="steps">' + PASSOS.map(function (t, i) {
+      var n = i + 1;
+      var cls = n === passo ? ' is-active' : (n < passo ? ' is-done' : '');
+      return '<div class="step' + cls + '"><span class="step__n">' + (n < passo ? '✓' : n) + '</span>' +
+        '<span class="step__t">' + t + '</span></div>' +
+        (n < PASSOS.length ? '<span class="step__bar"></span>' : '');
+    }).join('') + '</div>';
+  }
+
+  function resumo() {
+    var linhas = VMCart.linhas();
+    var frete = VMCart.frete();
+    return '' +
+    '<aside class="summary">' +
+      '<h3>Resumo</h3>' +
+      linhas.map(function (l) {
+        return '<div class="summary__row"><span>' + l.qtd + '× ' + l.p.nome + '</span><b>' + VM.money(l.sub) + '</b></div>';
+      }).join('') +
+      '<hr class="divider">' +
+      '<div class="summary__row"><span>Subtotal</span><b>' + VM.money(VMCart.subtotal()) + '</b></div>' +
+      '<div class="summary__row"><span>Frete</span><b>' + (frete === 0 ? 'Grátis' : VM.money(frete)) + '</b></div>' +
+      '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(VMCart.total()) + '</span></div>' +
+      (pagamento === 'pix'
+        ? '<p style="font-size:13px;color:var(--success);font-weight:600">' + VM.money(VMCart.total() * 0.95) + ' com 5% de desconto no Pix</p>'
+        : '') +
+      '<p class="mono subtle" style="text-align:center">Demonstração - sem cobrança.</p>' +
+    '</aside>';
+  }
+
+  function painelIdentificacao() {
+    return '<div class="panel stack-6">' +
+      '<h3>Seus dados</h3>' +
+      '<div class="field-grid field-grid--2">' +
+        '<div class="field"><label for="nome">Nome completo <span class="req">*</span></label>' +
+          '<input id="nome" required placeholder="Nome e sobrenome"><span class="err">Informe seu nome.</span></div>' +
+        '<div class="field"><label for="doc">CPF ou CNPJ <span class="req">*</span></label>' +
+          '<input id="doc" inputmode="numeric" placeholder="000.000.000-00"><span class="err">Informe um documento.</span></div>' +
+        '<div class="field"><label for="email">E-mail <span class="req">*</span></label>' +
+          '<input id="email" type="email" placeholder="voce@email.com"><span class="err">Informe um e-mail válido.</span></div>' +
+        '<div class="field"><label for="tel">Telefone <span class="req">*</span></label>' +
+          '<input id="tel" inputmode="tel" placeholder="(41) 90000-0000"><span class="err">Informe um telefone.</span></div>' +
+      '</div>' +
+      '<label class="filter-opt" style="padding:0"><input type="checkbox" id="pessoa-juridica">Comprar como pessoa jurídica (emitir NF-e para CNPJ)</label>' +
+    '</div>';
+  }
+
+  function painelEntrega() {
+    return '<div class="panel stack-6">' +
+      '<h3>Entrega</h3>' +
+      '<div class="stack">' +
+        '<label class="pay-opt is-sel"><input type="radio" name="entrega" value="entrega" checked>' +
+          VM.icon('caminhao') +
+          '<span><span class="pay-opt__t">Entrega VM Click - Curitiba e região</span>' +
+          '<span class="pay-opt__d">1 a 3 dias úteis · grátis acima de ' + VM.money(VMCart.FRETE_GRATIS) + '</span></span></label>' +
+        '<label class="pay-opt"><input type="radio" name="entrega" value="retirada">' +
+          VM.icon('loja') +
+          '<span><span class="pay-opt__t">Retirar na loja - Portão</span>' +
+          '<span class="pay-opt__d">R. Amadeu do Amaral, 1602 · pronto em 2 horas · sem custo</span></span></label>' +
+      '</div>' +
+      '<div class="field-grid field-grid--2">' +
+        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" maxlength="9" placeholder="80000-000"><span class="err">Informe o CEP.</span></div>' +
+        '<div class="field"><label for="rua">Endereço</label><input id="rua" placeholder="Rua, avenida…"></div>' +
+        '<div class="field"><label for="numero">Número</label><input id="numero" placeholder="1602"></div>' +
+        '<div class="field"><label for="compl">Complemento</label><input id="compl" placeholder="Apto, bloco, referência"></div>' +
+        '<div class="field"><label for="bairro">Bairro</label><input id="bairro" placeholder="Portão"></div>' +
+        '<div class="field"><label for="cidade">Cidade</label><input id="cidade" value="Curitiba"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function painelPagamento() {
+    var opcoes = [
+      { v: 'pix',     i: 'pix',    t: 'Pix', d: '5% de desconto · aprovação imediata' },
+      { v: 'cartao',  i: 'cartao', t: 'Cartão de crédito', d: 'Até 6× sem juros' },
+      { v: 'boleto',  i: 'boleto', t: 'Boleto bancário', d: 'Compensação em até 2 dias úteis' }
+    ];
+    return '<div class="panel stack-6">' +
+      '<h3>Pagamento</h3>' +
+      '<div class="stack">' + opcoes.map(function (o) {
+        return '<label class="pay-opt' + (o.v === pagamento ? ' is-sel' : '') + '">' +
+          '<input type="radio" name="pgto" value="' + o.v + '"' + (o.v === pagamento ? ' checked' : '') + '>' +
+          VM.icon(o.i) +
+          '<span><span class="pay-opt__t">' + o.t + '</span><span class="pay-opt__d">' + o.d + '</span></span></label>';
+      }).join('') + '</div>' +
+      '<div class="note-demo panel" style="background:var(--warning-bg);border-color:#F0DEBE">' +
+        '<p style="font-size:14px;color:#6A3D06">' +
+        '<b>Demonstração.</b> Nenhum dado de pagamento é solicitado ou processado nesta versão. ' +
+        'Na loja real, este passo é executado pelo checkout do WooCommerce com o gateway contratado.</p>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function botoes() {
+    return '<div class="row" style="justify-content:space-between;margin-top:24px">' +
+      (passo > 1
+        ? '<button class="btn btn--ghost" type="button" id="voltar">← Voltar</button>'
+        : '<a class="btn btn--ghost" href="carrinho.html">← Voltar ao carrinho</a>') +
+      '<button class="btn btn--primary btn--lg" type="button" id="avancar">' +
+        (passo === 3 ? 'Concluir pedido simulado' : 'Continuar') + '</button>' +
+    '</div>';
+  }
+
+  function render() {
+    if (!VMCart.linhas().length) {
+      raiz.innerHTML =
+        '<div class="empty-state">' + VM.icon('carrinho') +
+        '<h3>Não há itens para finalizar</h3>' +
+        '<p class="muted" style="margin-top:8px">Adicione produtos ao carrinho para testar o fluxo de compra.</p>' +
+        '<a class="btn btn--primary" style="margin-top:24px" href="produtos.html">Ver produtos</a></div>';
+      return;
+    }
+
+    var painel = passo === 1 ? painelIdentificacao() : (passo === 2 ? painelEntrega() : painelPagamento());
+
+    raiz.innerHTML = barraPassos() +
+      '<div class="checkout-layout"><div>' + painel + botoes() + '</div>' + resumo() + '</div>';
+
+    var avancar = document.getElementById('avancar');
+    var voltar = document.getElementById('voltar');
+
+    if (voltar) voltar.addEventListener('click', function () { passo--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+    avancar.addEventListener('click', function () {
+      if (!validar()) return;
+      if (passo < 3) { passo++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else concluir();
+    });
+
+    document.querySelectorAll('input[name="pgto"]').forEach(function (r) {
+      r.addEventListener('change', function () { pagamento = this.value; render(); });
+    });
+
+    document.querySelectorAll('.pay-opt input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var nome = this.name;
+        document.querySelectorAll('input[name="' + nome + '"]').forEach(function (x) {
+          x.closest('.pay-opt').classList.toggle('is-sel', x.checked);
+        });
+      });
+    });
+
+    var cep = document.getElementById('cep');
+    if (cep) cep.addEventListener('input', function () {
+      var v = this.value.replace(/\D/g, '').slice(0, 8);
+      this.value = v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v;
+    });
+  }
+
+  function validar() {
+    var obrigatorios = passo === 1 ? ['nome', 'doc', 'email', 'tel'] : (passo === 2 ? ['cep'] : []);
+    var ok = true;
+
+    obrigatorios.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var campo = el.closest('.field');
+      var vazio = !el.value.trim();
+      var emailRuim = id === 'email' && el.value.indexOf('@') === -1;
+      var invalido = vazio || emailRuim;
+      campo.classList.toggle('is-invalid', invalido);
+      if (invalido && ok) { el.focus(); ok = false; }
+    });
+
+    if (!ok) VM.toast('Confira os campos destacados.', 'warn');
+    return ok;
+  }
+
+  function concluir() {
+    var numero = 'VM-' + String(Math.floor(Math.random() * 90000) + 10000);
+    var total = VM.money(VMCart.total());
+
+    raiz.innerHTML =
+      '<div class="done-box">' +
+        '<div class="done-box__ico">' + VM.icon('check') + '</div>' +
+        '<span class="badge badge--warn">Pedido simulado</span>' +
+        '<h2 style="margin:16px 0 12px">Pedido registrado na demonstração</h2>' +
+        '<p class="muted">Número do pedido <b class="mono">' + numero + '</b> · total de <b>' + total + '</b>.</p>' +
+        '<p class="muted" style="margin-top:16px">' +
+          'Este é o ponto em que a loja real dispara o pagamento, envia o e-mail de confirmação e ' +
+          'lança o pedido no <b>Olist Tiny</b> para separação e emissão da nota fiscal. ' +
+          'Nesta versão de teste, nada disso acontece - nenhum valor foi cobrado.' +
+        '</p>' +
+        '<div class="row" style="justify-content:center;margin-top:28px">' +
+          '<a class="btn btn--primary" href="produtos.html">Voltar ao catálogo</a>' +
+          '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar com a loja</a>' +
+        '</div>' +
+      '</div>';
+
+    VMCart.limpar();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  render();
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>
+

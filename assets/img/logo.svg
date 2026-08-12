@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="VM Click">
+  <rect x="1" y="1" width="98" height="98" rx="15" fill="#E63337"/>
+  <path d="M14 99 L29 20 L44 63 L57 20 L72 63 L86 20 L86 99 L71 99 L71 57 L60 94 L47 94 L36 57 L36 99 Z" fill="#fff"/>
+</svg>

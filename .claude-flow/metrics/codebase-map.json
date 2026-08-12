@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-08-12T20:25:30.042Z",
+  "projectRoot": "C:\\Users\\Administrador\\Documents\\Projetos\\vmclick",
+  "structure": {
+    "hasPackageJson": false,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1786566330042
+}

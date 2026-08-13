@@ -437,7 +437,8 @@
       '<h1>' + p.nome + '</h1>' +
       '<div class="pdp__meta">' +
         '<span class="stars">' + estrelas + '</span>' +
-        '<span class="num">' + p.nota.toFixed(1) + ' (' + p.avaliacoes + ' avaliações)</span>' +
+        '<a class="num" href="#avaliacoes">' + p.nota.toFixed(1).replace('.', ',') +
+        ' (' + p.avaliacoes + ' avaliações)</a>' +
         '<span>cód. <b class="mono">' + p.sku + '</b></span>' +
         (esgotado
           ? '<span class="badge badge--bad">Esgotado</span>'
@@ -556,6 +557,8 @@
             : '<div class="cep-result__row"><span>Transportadora</span><b>' + VM.money(58.40) + ' · 5 a 9 dias úteis</b></div>') +
           '<div class="cep-result__row"><span>Acima de ' + VM.money(window.VMCart.FRETE_GRATIS) + '</span><b>Frete grátis</b></div>' +
         '</div>';
+      /* o resultado nasce depois do boot: entra em cascata como as demais listas */
+      if (window.VMAnim && VMAnim.listas) VMAnim.listas(res);
     });
 
     /* avaliações */
@@ -590,7 +593,12 @@
     'Gilberto O.', 'Tatiane D.', 'Wagner K.', 'Larissa H.'
   ];
 
-  var PERFIS = ['Eletricista', 'Consumidor final', 'Construtor', 'Encanador', 'Arquiteta', 'Zelador', 'Marceneiro', 'Pintor'];
+  /* Rótulos de uso, não de pessoa: descrevem o contexto da compra e evitam
+     supor gênero ou profissão de quem avaliou. */
+  var PERFIS = [
+    'Instalação elétrica', 'Uso doméstico', 'Obra residencial', 'Manutenção predial',
+    'Reforma', 'Projeto de iluminação', 'Uso profissional', 'Pequeno reparo'
+  ];
 
   var COMENTARIOS = {
     eletrica: [
@@ -753,8 +761,9 @@
         '<span class="cat-card__link">Ver produtos' + VM.icon('seta') + '</span>' +
       '</a>';
     }).join('') +
-    '<a class="cat-card" href="servicos.html">' +
+    '<a class="cat-card cat-card--servico" href="servicos.html">' +
       VM.ico('p-projeto', 'cat-card__ico') +
+      '<span class="cat-card__tag">Serviço</span>' +
       '<h3>Projetos e serviços</h3>' +
       '<p>Setor de design responsável por projetos de lighting design e consultoria de iluminação, com equipe parceira para instalação elétrica e hidráulica.</p>' +
       '<span class="cat-card__n">Orçamento sob medida</span>' +

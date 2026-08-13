@@ -14,6 +14,7 @@
   if (!window.gsap || reduzido) {
     raiz.classList.remove('js-anim');
     VMAnim.cards = function () {};
+    VMAnim.listas = function () {};
     return;
   }
 
@@ -95,6 +96,51 @@
   };
 
   /* ======================================================================
+     4.1 Listas em cascata
+     Item a item, caindo de cima, conforme a lista entra na tela. Vale para
+     todo componente de lista do site, não só a linha do tempo.
+     Cada container é marcado depois de animado, então pode ser chamado de novo
+     com segurança quando um bloco é renderizado por JS.
+     ====================================================================== */
+  var LISTAS = [
+    ['.timeline',      'li'],
+    ['.contact-list',  'li'],
+    ['.pdp__points',   'li'],
+    ['.svc-card ul',   'li'],
+    ['.clean-list',    'li'],
+    ['.acc',           '.acc__item'],
+    ['.rv__lista',     '.rv__item'],
+    ['.rv__barras',    '.rv-bar'],
+    ['.trust',         '.trust__item'],
+    ['.steps',         '.step'],
+    ['.cep-result',    '.cep-result__row']
+  ];
+
+  VMAnim.listas = function (escopo) {
+    var raizBusca = typeof escopo === 'string' ? document.querySelector(escopo) : (escopo || document);
+    if (!raizBusca) return;
+
+    LISTAS.forEach(function (par) {
+      var containers = raizBusca.querySelectorAll(par[0]);
+      Array.prototype.forEach.call(containers, function (el) {
+        if (el.getAttribute('data-cascata')) return;   /* já animado */
+        var itens = el.querySelectorAll(par[1]);
+        if (!itens.length) return;
+        el.setAttribute('data-cascata', '1');
+
+        var config = {
+          y: 0, opacity: 1, duration: .55, ease: EASE,
+          stagger: .09, overwrite: 'auto'
+        };
+        if (window.ScrollTrigger) {
+          config.scrollTrigger = { trigger: el, start: 'top 88%', once: true };
+        }
+        gsap.fromTo(itens, { y: -16, opacity: 0 }, config);
+      });
+    });
+  };
+
+  /* ======================================================================
      5. Barras de seção com leve paralaxe no título
      ====================================================================== */
   function paralaxeTitulos() {
@@ -145,6 +191,7 @@
   function boot() {
     hero();
     revelacoes();
+    VMAnim.listas(document);
     contadores(document);
     paralaxeTitulos();
     transicaoPaginas();

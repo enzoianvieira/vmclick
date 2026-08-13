@@ -216,6 +216,13 @@ Estado esgotado: imagem 45% opacidade + badge `--danger-bg` + botão vira "Avise
 Breadcrumb · H1 da categoria · contador de resultados · ordenação (relevância, menor preço, maior preço, mais vendidos) · sidebar de filtros (categoria, marca, faixa de preço, tensão/bitola/potência quando aplicável, disponibilidade) · grid responsivo · paginação numerada (não infinite scroll - melhor p/ SEO).
 Mobile: filtros em bottom-sheet.
 
+### 5.5.1 Galeria e avaliações da PDP
+**Galeria de 3 vistas** (nenhuma é a mesma imagem repetida): *Produto* (ilustração), *Medidas* (a mesma peça com cotas e a medida principal em destaque) e *Ficha* (as 4 especificações que mais pesam na decisão). Trocar de vista é clique ou toque; as fotos reais substituem a vista *Produto* quando o Olist Tiny for integrado.
+
+**Bloco de avaliações**: média em destaque, distribuição por estrela em barras, lista de depoimentos com avatar de inicial, rótulo de contexto de uso e data relativa. O conteúdo é gerado a partir do SKU (estável entre recarregamentos) e vem **rotulado como demonstração** na própria interface. Na loja real, o bloco é alimentado pelas avaliações do WooCommerce (comentários do CPT `product`).
+
+**Card clicável**: o card inteiro abre o produto no clique do mouse; o link do título continua sendo o elemento real de navegação para teclado e leitor de tela, e os botões internos (Adicionar, favoritar) não disparam a navegação.
+
 ### 5.5 Página de produto (PDP)
 Galeria (thumb vertical + zoom) · nome · SKU/EAN · avaliação (placeholder) · preço + parcelamento + "à vista no PIX" · seletor de variação · stepper de quantidade · **Adicionar ao carrinho** (primary) + **Comprar agora** (secondary) · **simulador de frete por CEP** (mock no MVP) · abas: Descrição · Especificações técnicas (tabela) · Entrega e devolução · faixa de confiança · **produtos relacionados**.
 
@@ -246,6 +253,22 @@ Breadcrumb · Badge/tag · Input, select, textarea, checkbox, radio, stepper de 
 **Regra de ouro do MVP:** todo HTML da vitrine usa as classes e a hierarquia do WooCommerce (`.products`, `.product`, `.woocommerce-loop-product__title`, `.price`, `.add_to_cart_button`) para que a migração seja troca de template, não reescrita.
 
 ---
+
+## 6.0 Grades e movimento
+**Colunas fixas por faixa, não `auto-fit`.** A grade de categorias tem 6 cards: 3 colunas no desktop, 2 no tablet e 1 no celular fecham a grade em todos os casos (3+3, 2+2+2, 6×1). Com `auto-fit` o desktop caía em 4 colunas e sobravam dois cards órfãos na última linha. Regra geral: quando a contagem de itens é conhecida e fixa, escolha o número de colunas que divide essa contagem.
+
+**Projetos e serviços** não é categoria de catálogo (não tem preço nem itens a somar). Recebe fundo e borda em teal e o selo "Serviço", para o último card ler como escolha de design e não como sobra.
+
+**Acordeão** (`VM.initAcordeao`): um painel aberto por vez, com animação de altura na abertura e no fechamento e o conteúdo entrando logo atrás. O `+` gira para virar `×`. O painel usa `overflow: hidden` para a altura poder animar, e o atributo `hidden` só volta quando o fechamento termina, para o conteúdo não ficar legível por leitor de tela enquanto está colapsado. Sem GSAP ou com `prefers-reduced-motion`, vira liga-desliga. A resposta ocupa a largura inteira da pergunta, sem limite de medida de linha.
+
+**Cascata de listas.** Todo componente de lista revela item a item, caindo de cima (`translateY(-16px)` → 0, opacidade 0 → 1, escalonamento de 90ms), disparado quando a lista entra a 88% da viewport, uma vez só. Vale para: linha do tempo, lista de contato, itens da faixa de confiança, passos do checkout, perguntas do acordeão, listas dos cards de serviço, listas das páginas institucionais, pontos da PDP, barras e depoimentos das avaliações, e o resultado do simulador de frete. Containers renderizados por JS são marcados com `data-cascata` depois de animados, então a função pode ser chamada de novo com segurança. Sem GSAP, sem JS ou com `prefers-reduced-motion`, tudo aparece direto.
+
+## 6.1 Regras de celular (verificadas em 320, 375 e 414px)
+- Nenhuma página rola na horizontal. Conteúdo largo (tabela de especificações, abas, esteira de marcas) rola dentro do próprio container.
+- Filho de grid recebe `min-width: 0` sempre que o conteúdo tiver largura intrínseca (input, botão com texto longo, imagem com `aspect-ratio`). Sem isso a trilha do grid estoura o container.
+- `@media (hover: none)`: alvos de toque sobem para 44px (botão Adicionar, seletor de ordenação, paginação) e o botão de favoritar, que no desktop aparece no hover, nasce visível — caso contrário seria inalcançável no celular.
+- Filtros da vitrine viram bottom-sheet com rolagem interna e botão de fechar; menu e carrinho são drawers laterais que cabem na tela.
+- Hero no celular: respiro vertical menor, CTAs em largura total e métricas em três colunas iguais.
 
 ## 7. Acessibilidade (mínimo obrigatório)
 - Contraste AA em todo texto; foco visível em todo elemento interativo.

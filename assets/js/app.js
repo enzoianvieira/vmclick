@@ -417,6 +417,67 @@
   }
 
   /* ======================================================================
+     7.2 ACORDEÃO
+     Um painel aberto por vez, com animação de altura. Sem GSAP, cai para o
+     liga-desliga do atributo hidden, que continua acessível.
+     ====================================================================== */
+  VM.initAcordeao = function (sel) {
+    var raiz = typeof sel === 'string' ? VM.qs(sel) : sel;
+    if (!raiz) return;
+
+    var gsap = window.gsap;
+    var reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var anima = !!gsap && !reduzido;
+    var itens = VM.qsa('.acc__item', raiz);
+
+    function painel(item) { return item.querySelector('.acc__panel'); }
+    function botao(item) { return item.querySelector('.acc__btn'); }
+
+    function abrir(item) {
+      var p = painel(item), b = botao(item);
+      b.setAttribute('aria-expanded', 'true');
+      item.classList.add('is-open');
+      p.hidden = false;
+
+      if (!anima) return;
+      gsap.killTweensOf(p);
+      gsap.set(p, { height: 'auto', paddingBottom: '' });
+      gsap.from(p, {
+        height: 0, paddingBottom: 0, duration: .38, ease: 'power2.out',
+        clearProps: 'height,paddingBottom'
+      });
+      gsap.from(p.children, { y: -10, opacity: 0, duration: .3, stagger: .06, delay: .08, ease: 'power2.out' });
+    }
+
+    function fechar(item, imediato) {
+      var p = painel(item), b = botao(item);
+      b.setAttribute('aria-expanded', 'false');
+      item.classList.remove('is-open');
+
+      if (!anima || imediato) { p.hidden = true; return; }
+      gsap.killTweensOf(p);
+      gsap.to(p, {
+        height: 0, paddingBottom: 0, duration: .28, ease: 'power2.in',
+        onComplete: function () {
+          p.hidden = true;
+          gsap.set(p, { clearProps: 'height,paddingBottom' });
+        }
+      });
+    }
+
+    itens.forEach(function (item) {
+      botao(item).addEventListener('click', function () {
+        var aberto = item.classList.contains('is-open');
+        /* um por vez: fecha o que estiver aberto antes de abrir o novo */
+        itens.forEach(function (outro) {
+          if (outro !== item && outro.classList.contains('is-open')) fechar(outro);
+        });
+        if (aberto) fechar(item); else abrir(item);
+      });
+    });
+  };
+
+  /* ======================================================================
      8. TOASTS
      ====================================================================== */
   VM.toast = function (msg, tipo) {

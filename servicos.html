@@ -163,13 +163,7 @@ document.addEventListener('vm:ready', function () {
     '</div>';
   }).join('');
 
-  document.querySelectorAll('.acc__btn').forEach(function (b) {
-    b.addEventListener('click', function () {
-      var aberto = b.getAttribute('aria-expanded') === 'true';
-      b.setAttribute('aria-expanded', String(!aberto));
-      document.getElementById(b.getAttribute('aria-controls')).hidden = aberto;
-    });
-  });
+  VM.initAcordeao('#faq');
 
   document.getElementById('cta-wa').href = VM.EMPRESA.whatsapp;
 });

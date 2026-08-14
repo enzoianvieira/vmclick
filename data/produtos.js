@@ -2,7 +2,7 @@
    VM Click - catálogo sincronizado do Olist ERP (API v3)
    --------------------------------------------------------------------------
    ARQUIVO GERADO POR scripts/enrich-produtos.js — NÃO EDITE À MÃO.
-   Última sincronização: 2026-08-14T03:36:18.413Z
+   Última sincronização: 2026-08-14T03:58:54.384Z
    Total de produtos: 2401
    Ordenação: com estoque + imagem primeiro; esgotados por último.
    ========================================================================== */

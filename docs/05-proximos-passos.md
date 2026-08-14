@@ -18,7 +18,6 @@ Já funcionando:
 - Home com destaques, ofertas e vitrines que rolam sozinhas
 - Blog com três conteúdos técnicos publicados
 - Páginas institucionais, serviços, contato e política de privacidade
-- Site responsivo, acessível por teclado e preparado para migrar ao WordPress
 
 **Importante:** esta é uma versão de demonstração. Nenhuma venda é processada,
 nenhum pedido chega ao Olist e o formulário de contato ainda não envia mensagem.

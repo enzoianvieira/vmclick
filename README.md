@@ -37,6 +37,7 @@ npm run dev                     # sobe servidor em http://localhost:4321
 Primeira instalação: siga a [seção de integração Olist](#integração-olist-erp).
 
 Requisitos: **Node 18+** (usa `fetch` nativo, zero dependências npm).
+Só para reprocessar imagens: **ffmpeg com libwebp** no PATH (ver [Trocar ou adicionar imagens](#trocar-ou-adicionar-imagens)).
 
 ---
 
@@ -186,6 +187,8 @@ node scripts/enrich-produtos.js --force
 | `npm run enrich-produtos:dry` | Simula: baixa mas não grava `data/produtos.js` |
 | `npm run enrich-produtos:cache` | Regenera `data/produtos.js` a partir do cache local (sem requests) |
 | `npm run sync-tiny` | Sync leve: só lista produtos, sem detalhe (legado — use `enrich`) |
+| `npm run otimizar-imagens` | Gera as imagens servidas pelo site a partir de `assets/img/_originais/` (precisa de ffmpeg) |
+| `npm run otimizar-imagens:force` | Idem, reprocessando tudo mesmo que a saída já exista |
 
 ---
 
@@ -297,7 +300,11 @@ vmclick/
 │  ├─ css/  tokens · base · components · pages · fonts
 │  ├─ js/   app · cart · catalog · animations · hero-3d · sprite
 │  ├─ fonts/ Poppins + Inter
-│  ├─ img/  logo.svg
+│  ├─ img/
+│  │  ├─ _originais/  ← PNGs de origem (entrada do otimizar-imagens)
+│  │  ├─ brand/       ← lockup claro/escuro, símbolo, favicons
+│  │  ├─ banners/     ← 3 promos × (desktop 1920 / mobile 800) × (webp + jpg)
+│  │  └─ loja/        ← fachada · interior · painel, em 1600 e 900, webp + jpg
 │  └─ vendor/ gsap · ScrollTrigger · three
 │
 ├─ design-system/  tokens.css · preview.html
@@ -350,6 +357,33 @@ Remove-Item -Recurse -Force scripts/.cache
 npm run enrich-produtos
 ```
 
+### Trocar ou adicionar imagens
+
+Fluxo: **original entra em `assets/img/_originais/`, o script gera o resto.**
+
+```powershell
+# 1. coloque/substitua o PNG em assets/img/_originais/
+# 2. gere as versões servidas pelo site
+npm run otimizar-imagens
+```
+
+O script só reprocessa o que mudou (compara data de modificação). Para forçar tudo,
+`npm run otimizar-imagens:force`. Depende do **ffmpeg com libwebp** no PATH — não usa pacote npm.
+
+O plano de saída fica em três listas no topo de `scripts/otimizar-imagens.js`:
+
+| Lista | Gera | Onde aparece |
+|---|---|---|
+| `MARCA` | PNG com alfa, várias alturas | Header (`logo-lockup`), rodapé (`logo-lockup-dark`), favicons |
+| `BANNERS` | webp + jpg, par 1920/800 | Carrossel da home (`VM.initCarrossel`) |
+| `FOTOS` | webp + jpg, 1600 e 900 | Quem somos, Contato, Serviços, bloco "Quem somos" da home |
+
+Para trocar um banner do carrossel, substitua o par `banner_desktopN.png` / `banner_mobileN.png`,
+rode o script e ajuste o `alt` e o link do slide em `index.html`.
+
+Referência de tamanho: os 12 originais somam ~13 MB; as 30 versões geradas somam ~2,8 MB,
+e cada página carrega apenas uma fração disso.
+
 ### Trocar produtos por dados curados
 
 Se quiser sobrescrever campos manualmente, edite `data/produtos.js` — **mas** o próximo `enrich` vai sobrescrever. Alternativa: adicione uma coluna de override em uma fonte externa e mescle no `mapDetalhe()` de `enrich-produtos.js`.
@@ -385,6 +419,8 @@ Na fase 2, os scripts deste repo aposentam. O Olist continua como fonte única, 
 | `EADDRINUSE :::3000` | Outro processo na porta 3000. `Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -Force` |
 | Categorias com nome estranho | Editar regras em `scripts/regras-catalogo.js` + rodar `enrich-produtos:cache` |
 | Produto aparece na categoria errada | Mesma coisa (a regra que bateu primeiro venceu — reordene) |
+| `ffmpeg não encontrado no PATH` | Instale o ffmpeg. No Windows: `winget install Gyan.FFmpeg` e reabra o terminal |
+| Imagem nova não apareceu no site | O script pula saída já atualizada. Rode `npm run otimizar-imagens:force` |
 
 ---
 

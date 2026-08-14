@@ -30,6 +30,9 @@
 .btn--ghost:hover     { background: var(--n-100); color: var(--text); }
 .btn--wa        { background: var(--whatsapp); color: #06341C; }
 .btn--wa:hover        { background: #1FB857; color: #06341C; }
+/* O rótulo fica verde-escuro (contraste de texto), mas a marca vai em branco:
+   sólido escuro sobre o verde da marca vira um borrão. */
+.btn--wa svg    { color: #fff; }
 .btn--light     { background: #fff; color: var(--teal-800); }
 .btn--light:hover     { background: var(--teal-50); color: var(--teal-900); }
 .btn--danger    { background: transparent; color: var(--danger); border-color: var(--n-200); }
@@ -92,18 +95,27 @@
 }
 .headbar.is-stuck .container { min-height: var(--header-h-sticky); }
 
-.brand { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
-.brand__mark { width: 40px; height: 40px; border-radius: 9px; flex: none; }
-.brand__text { display: flex; flex-direction: column; line-height: 1; }
-.brand__name {
-  font-family: var(--font-display); font-weight: var(--fw-bold); font-size: 20px;
-  letter-spacing: -.02em; color: var(--teal-700);
+.brand { display: flex; align-items: center; flex: none; }
+.brand picture { display: block; }
+/* Lockup oficial (símbolo + nome + assinatura) numa única imagem. A altura
+   acompanha o header, que encolhe quando gruda no topo. Abaixo de 640px o
+   <picture> troca o lockup pelo símbolo quadrado (ver VM.logo). */
+.brand__logo {
+  display: block; width: auto; height: 56px; max-width: 100%;
+  transition: height var(--dur) var(--ease);
 }
+.headbar.is-stuck .brand__logo { height: 44px; }
+@media (max-width: 900px) { .brand__logo { height: 46px; } }
+@media (max-width: 640px) { .brand__logo { height: 40px; } }
+/* o menu mobile tem largura sobrando, então lá o lockup continua inteiro */
+.brand--sm .brand__logo { height: 42px; }
+/* com pouca largura, cada pixel de folga vai para o campo de busca */
+@media (max-width: 640px) { .headbar .container { gap: var(--sp-3); } }
+
 .brand__tag {
   font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--text-subtle); margin-top: 3px;
+  color: var(--text-subtle);
 }
-@media (max-width: 400px) { .brand__text { display: none; } }
 
 /* Busca */
 .searchbox { position: relative; flex: 1; min-width: 0; }
@@ -580,9 +592,14 @@ li.product, .product {
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .wa-fab:hover { transform: translateY(-2px); color: #06341C; box-shadow: 0 12px 30px rgba(37,211,102,.45); }
-.wa-fab svg { width: 24px; height: 24px; }
-.wa-fab span { font-size: var(--fs-sm); }
-@media (max-width: 600px) { .wa-fab { padding: 0; width: 54px; justify-content: center; } .wa-fab span { display: none; } }
+.wa-fab svg { width: 22px; height: 22px; flex: none; color: #fff; }
+.wa-fab span { font-size: var(--fs-sm); line-height: 1; }
+/* sem o rótulo, o ícone sozinho precisa crescer para não ficar perdido no círculo */
+@media (max-width: 600px) {
+  .wa-fab { padding: 0; width: 54px; justify-content: center; gap: 0; }
+  .wa-fab span { display: none; }
+  .wa-fab svg { width: 27px; height: 27px; }
+}
 
 /* ==========================================================================
    12. FAIXA DE CONFIANÇA
@@ -661,8 +678,11 @@ li.product, .product {
   text-transform: uppercase; margin-bottom: var(--sp-4);
 }
 .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); font-size: var(--fs-sm); }
-.footer-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.footer-brand .brand__name { color: #fff; }
+.footer-brand {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.footer-brand .brand__logo { height: 48px; }
 .footer-brand .brand__tag { color: var(--n-500); }
 .footer-about { font-size: var(--fs-sm); max-width: 40ch; }
 .footer-social { display: flex; gap: var(--sp-2); margin-top: var(--sp-5); }
@@ -687,4 +707,83 @@ li.product, .product {
   padding: 4px 9px; font-size: 10px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--n-400);
 }
+
+/* ==========================================================================
+   16. CARROSSEL DE BANNERS
+   Proporção travada por breakpoint para não haver salto de layout: as artes
+   de mobile são 4:3 e as de desktop 3,2:1. Setas e marcadores vêm do JS.
+   ========================================================================== */
+.carrossel {
+  position: relative; overflow: hidden;
+  border-radius: var(--r-xl); background: var(--n-950);
+  box-shadow: var(--sh-md);
+  aspect-ratio: 800 / 600;
+}
+@media (min-width: 760px) { .carrossel { aspect-ratio: 1920 / 600; } }
+
+.carrossel__trilha {
+  display: flex; height: 100%;
+  transition: transform 620ms var(--ease);
+}
+.carrossel__slide { flex: 0 0 100%; min-width: 0; height: 100%; }
+.carrossel__slide > a { display: block; width: 100%; height: 100%; }
+.carrossel__slide picture { display: block; width: 100%; height: 100%; }
+.carrossel__slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.carrossel__nav { position: absolute; inset: 0; pointer-events: none; }
+.carrossel__seta {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  pointer-events: auto; cursor: pointer; border: 0;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.86); color: var(--n-900);
+  box-shadow: var(--sh-md); opacity: .75;
+  transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.carrossel:hover .carrossel__seta { opacity: 1; }
+.carrossel__seta:hover { background: #fff; opacity: 1; }
+.carrossel__seta svg { width: 22px; height: 22px; }
+.carrossel__seta--ant { left: var(--sp-4); }
+.carrossel__seta--ant svg { transform: rotate(180deg); }
+.carrossel__seta--prox { right: var(--sp-4); }
+@media (max-width: 560px) { .carrossel__seta { display: none; } }
+
+.carrossel__pontos {
+  position: absolute; left: 0; right: 0; bottom: var(--sp-5);
+  display: flex; justify-content: center; gap: 8px;
+}
+.carrossel__ponto {
+  width: 10px; height: 10px; padding: 0; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.65); border-radius: var(--r-pill);
+  background: rgba(255,255,255,.24);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  transition: width var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.carrossel__ponto:hover { background: rgba(255,255,255,.6); }
+.carrossel__ponto.is-active { width: 28px; background: #fff; border-color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .carrossel__trilha { transition: none; }
+}
+
+/* ==========================================================================
+   17. FOTOS DA LOJA
+   ========================================================================== */
+.foto {
+  border-radius: var(--r-xl); overflow: hidden;
+  border: 1px solid var(--border); background: var(--n-100);
+}
+.foto img { display: block; width: 100%; height: auto; }
+.foto--cover img { aspect-ratio: 16 / 10; object-fit: cover; }
+.foto--alta img { aspect-ratio: 4 / 3; object-fit: cover; }
+.foto figcaption {
+  padding: var(--sp-4) var(--sp-5); background: var(--surface);
+  font-size: var(--fs-sm); color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.foto figcaption b { color: var(--text); display: block; margin-bottom: 2px; }
+
+.foto-grid { display: grid; gap: var(--sp-5); grid-template-columns: 1fr; }
+@media (min-width: 700px)  { .foto-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) { .foto-grid { grid-template-columns: repeat(3, 1fr); } }
 

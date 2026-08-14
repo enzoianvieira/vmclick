@@ -58,7 +58,8 @@
     email:      '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3 6 9 7 9-7"/>',
     local:      '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.8"/>',
     relogio:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
-    whatsapp:   '<path d="M20.5 11.6A8.4 8.4 0 0 0 12 3.2a8.4 8.4 0 0 0-7.3 12.6L3.2 21l5.4-1.4a8.4 8.4 0 0 0 11.9-8Z"/><path d="M8.9 8.2c.2-.4.4-.4.6-.4h.6c.2 0 .4 0 .6.5l.8 1.9c.1.2 0 .4-.1.6l-.5.6c-.1.2-.2.3 0 .6a7 7 0 0 0 3.1 2.6c.3.1.5.1.6 0l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.4 0 .5-.2 1.4-.6 1.7-.4.3-1.5.8-3.3.2a10.4 10.4 0 0 1-5.8-5.4c-.5-1.2-.4-2.5.5-3.3Z"/>',
+    /* whatsapp não entra aqui: é marca de terceiro e vem do sprite (#m-whatsapp),
+       com o contorno oficial. Ver VM.icon abaixo. */
     instagram:  '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1"/>',
     facebook:   '<path d="M14.5 8.5h2.5V5.2h-2.6c-2.4 0-3.9 1.5-3.9 4v2H8v3.3h2.5V21h3.4v-6.5h2.5l.5-3.3h-3V9.4c0-.6.2-.9 1.1-.9Z"/>',
     seta:       '<path d="M5 12h13M13 6l6 6-6 6"/>',
@@ -86,7 +87,15 @@
     doc:        '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>'
   };
 
+  /* Marcas de terceiros são símbolos sólidos do sprite; o resto são os
+     pictogramas traçados de P. A assinatura da função é a mesma para os dois. */
+  var MARCAS = { whatsapp: 'm-whatsapp' };
+
   VM.icon = function (name, cls) {
+    if (MARCAS[name]) {
+      return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' +
+             '<use href="#' + MARCAS[name] + '"></use></svg>';
+    }
     var d = P[name] || '';
     return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
            'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
@@ -102,6 +111,7 @@
   var EMPRESA = VM.EMPRESA = {
     nome: 'VM Click',
     assinatura: 'Materiais elétricos, hidráulicos e utilidades',
+    cnpj: '17.502.553/0001-45',
     email: 'contato@vmclick.com.br',
     fone: '(41) 3089-2453',
     cel: '(41) 99892-0006',
@@ -113,13 +123,26 @@
     desde: 2012
   };
 
-  var LOGO_SVG =
-    '<svg class="brand__mark" viewBox="0 0 100 100" aria-hidden="true">' +
-    '<rect x="1" y="1" width="98" height="98" rx="15" fill="#E63337"/>' +
-    '<path d="M14 99 L29 20 L44 63 L57 20 L72 63 L86 20 L86 99 L71 99 L71 57 L60 94 L47 94 L36 57 L36 99 Z" fill="#fff"/>' +
-    '</svg>';
+  /* Logo oficial em duas versões do mesmo lockup: a assinatura é preta na
+     variante clara e branca na escura, então cada fundo pede a sua. */
+  var LOGO_ALT = 'VM Click - materiais elétricos, hidráulicos e utilidades';
 
-  VM.LOGO_SVG = LOGO_SVG;
+  VM.logo = function (opts) {
+    opts = opts || {};
+    var arq = opts.escuro ? 'logo-lockup-dark.png' : 'logo-lockup.png';
+    var img = '<img class="brand__logo' + (opts.cls ? ' ' + opts.cls : '') + '"' +
+      ' src="assets/img/brand/' + arq + '"' +
+      ' alt="' + (opts.alt === '' ? '' : LOGO_ALT) + '"' +
+      (opts.alt === '' ? ' aria-hidden="true"' : '') + ' decoding="async">';
+
+    if (!opts.compacto) return img;
+
+    /* No header, o lockup inteiro ocupa ~150px e não sobra largura útil para a
+       busca em telas estreitas. Abaixo de 640px entra só o símbolo. */
+    return '<picture>' +
+      '<source media="(max-width: 640px)" srcset="assets/img/brand/logo-mark.png">' +
+      img + '</picture>';
+  };
 
   var NAV = [
     { t: 'Início',     h: 'index.html' },
@@ -162,9 +185,7 @@
 
     return '' +
     '<div class="headbar" id="headbar"><div class="container">' +
-      '<a class="brand" href="index.html" aria-label="VM Click, página inicial">' + LOGO_SVG +
-        '<span class="brand__text"><span class="brand__name">VM CLICK</span>' +
-        '<span class="brand__tag">Elétrica · Hidráulica · Utilidades</span></span></a>' +
+      '<a class="brand" href="index.html">' + VM.logo({ compacto: true }) + '</a>' +
 
       '<div class="searchbox">' +
         '<label class="sr-only" for="busca">Buscar produtos</label>' +
@@ -192,7 +213,7 @@
       '<div class="overlay" data-close-menu></div>' +
       '<div class="mobile-nav__panel" role="dialog" aria-modal="true" aria-label="Menu">' +
         '<div class="mobile-nav__head">' +
-          '<a class="brand" href="index.html">' + LOGO_SVG + '<span class="brand__text"><span class="brand__name">VM CLICK</span></span></a>' +
+          '<a class="brand brand--sm" href="index.html">' + VM.logo() + '</a>' +
           '<button class="btn-icon" data-close-menu aria-label="Fechar menu">' + VM.icon('fechar') + '</button>' +
         '</div>' +
         '<div class="mobile-nav__links">' + mobileLinks + '</div>' +
@@ -215,9 +236,8 @@
     return '' +
     '<div class="container"><div class="footer-grid">' +
       '<div class="footer-col">' +
-        '<div class="footer-brand">' + LOGO_SVG +
-          '<span class="brand__text"><span class="brand__name">VM CLICK</span>' +
-          '<span class="brand__tag">Desde ' + EMPRESA.desde + ' em Curitiba</span></span></div>' +
+        '<div class="footer-brand">' + VM.logo({ escuro: true }) +
+          '<span class="brand__tag">Desde ' + EMPRESA.desde + ' em Curitiba</span></div>' +
         '<p class="footer-about">Materiais elétricos, hidráulicos e utilidades com atendimento técnico de quem entende de obra. Mais de 30.000 itens em catálogo.</p>' +
         '<div class="footer-social">' +
           '<a href="' + EMPRESA.instagram + '" target="_blank" rel="noopener" aria-label="Instagram">' + VM.icon('instagram') + '</a>' +
@@ -246,7 +266,7 @@
     '</div>' +
 
     '<div class="footer-bottom">' +
-      '<span>© ' + new Date().getFullYear() + ' VM Click · CNPJ 00.000.000/0001-00 · Curitiba/PR - <b>versão de demonstração</b></span>' +
+      '<span>© ' + new Date().getFullYear() + ' ' + EMPRESA.nome + ' · CNPJ ' + EMPRESA.cnpj + ' · Curitiba/PR - <b>versão de demonstração</b></span>' +
       '<div class="pay-badges">' +
         '<span class="pay-badge">Pix</span><span class="pay-badge">Boleto</span>' +
         '<span class="pay-badge">Visa</span><span class="pay-badge">Master</span>' +
@@ -475,6 +495,111 @@
         if (aberto) fechar(item); else abrir(item);
       });
     });
+  };
+
+  /* ======================================================================
+     7.3 CARROSSEL DE BANNERS
+     O HTML da página descreve apenas os slides; setas e marcadores são
+     gerados aqui para o componente funcionar com qualquer quantidade.
+     Autoplay pausa no hover, no foco do teclado e com a aba em segundo
+     plano - e não roda sozinho se o sistema pedir menos movimento.
+     ====================================================================== */
+  VM.initCarrossel = function (sel, opts) {
+    var raiz = typeof sel === 'string' ? VM.qs(sel) : sel;
+    if (!raiz) return;
+
+    opts = opts || {};
+    var intervalo = opts.intervalo || 6500;
+    var trilha = raiz.querySelector('.carrossel__trilha');
+    var slides = VM.qsa('.carrossel__slide', raiz);
+    if (!trilha || slides.length < 2) return;
+
+    var reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var atual = 0;
+    var timer = null;
+
+    var nav = document.createElement('div');
+    nav.className = 'carrossel__nav';
+    nav.innerHTML =
+      '<button class="carrossel__seta carrossel__seta--ant" type="button" aria-label="Banner anterior">' +
+        VM.icon('chevron') + '</button>' +
+      '<button class="carrossel__seta carrossel__seta--prox" type="button" aria-label="Próximo banner">' +
+        VM.icon('chevron') + '</button>';
+    raiz.appendChild(nav);
+
+    var pontos = document.createElement('div');
+    pontos.className = 'carrossel__pontos';
+    pontos.innerHTML = slides.map(function (s, i) {
+      var rot = s.getAttribute('data-titulo') || ('Banner ' + (i + 1));
+      return '<button class="carrossel__ponto" type="button" aria-label="Ir para: ' + rot + '"></button>';
+    }).join('');
+    raiz.appendChild(pontos);
+
+    function parar() { clearInterval(timer); timer = null; }
+    function tocar() {
+      if (reduzido || timer) return;
+      timer = setInterval(function () { ir(atual + 1); }, intervalo);
+    }
+
+    function ir(i, doUsuario) {
+      atual = (i + slides.length) % slides.length;
+      trilha.style.transform = 'translateX(' + (-atual * 100) + '%)';
+
+      slides.forEach(function (s, n) {
+        var ativo = n === atual;
+        s.setAttribute('aria-hidden', String(!ativo));
+        /* Link de slide escondido não deve ser alcançável por Tab. */
+        VM.qsa('a, button', s).forEach(function (f) {
+          if (ativo) f.removeAttribute('tabindex');
+          else f.setAttribute('tabindex', '-1');
+        });
+      });
+
+      VM.qsa('.carrossel__ponto', pontos).forEach(function (p, n) {
+        p.classList.toggle('is-active', n === atual);
+        p.setAttribute('aria-current', String(n === atual));
+      });
+
+      if (doUsuario) { parar(); tocar(); }
+    }
+
+    nav.querySelector('.carrossel__seta--ant').addEventListener('click', function () { ir(atual - 1, true); });
+    nav.querySelector('.carrossel__seta--prox').addEventListener('click', function () { ir(atual + 1, true); });
+
+    pontos.addEventListener('click', function (e) {
+      var b = e.target.closest('.carrossel__ponto');
+      if (b) ir(VM.qsa('.carrossel__ponto', pontos).indexOf(b), true);
+    });
+
+    raiz.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { ir(atual - 1, true); }
+      else if (e.key === 'ArrowRight') { ir(atual + 1, true); }
+    });
+
+    raiz.addEventListener('mouseenter', parar);
+    raiz.addEventListener('mouseleave', tocar);
+    raiz.addEventListener('focusin', parar);
+    raiz.addEventListener('focusout', function (e) {
+      if (!raiz.contains(e.relatedTarget)) tocar();
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) parar(); else tocar();
+    });
+
+    /* Arrastar com o dedo. */
+    var x0 = null;
+    raiz.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; parar(); }, { passive: true });
+    raiz.addEventListener('touchend', function (e) {
+      if (x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) ir(atual + (dx < 0 ? 1 : -1));
+      x0 = null;
+      tocar();
+    }, { passive: true });
+
+    ir(0);
+    tocar();
   };
 
   /* ======================================================================

@@ -1,0 +1,32 @@
+# O deploy é só o site estático. Nada aqui é necessário em produção e parte
+# disso não pode sair da máquina.
+
+# Segredos — client_secret e tokens do Olist. NUNCA no deploy.
+.env
+.env.local
+
+# Pipeline de dados e de imagens: roda só na máquina de dev
+scripts/
+sync-tiny.log
+# quando existe .vercelignore, o .gitignore deixa de valer para o deploy —
+# então o backup do catálogo precisa ser excluído aqui também
+data/produtos.js.bak
+
+# Originais das imagens (~13 MB). O site serve as versões de assets/img/{brand,banners,loja}
+assets/img/_originais/
+
+# Documentação interna e design system
+docs/
+design-system/
+README.md
+
+# Ferramentas locais
+.claude/
+.claude-flow/
+node_modules/
+.vscode/
+.idea/
+
+# Screenshots colados na conversa
+image.png
+image*.png

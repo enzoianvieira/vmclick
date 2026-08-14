@@ -12,7 +12,9 @@
     "fetch-categorias": "node scripts/fetch-categorias.js",
     "enrich-produtos": "node scripts/enrich-produtos.js",
     "enrich-produtos:dry": "node scripts/enrich-produtos.js --dry-run",
-    "enrich-produtos:cache": "node scripts/enrich-produtos.js --cache-only"
+    "enrich-produtos:cache": "node scripts/enrich-produtos.js --cache-only",
+    "otimizar-imagens": "node scripts/otimizar-imagens.js",
+    "otimizar-imagens:force": "node scripts/otimizar-imagens.js --force"
   },
   "engines": {
     "node": ">=18"

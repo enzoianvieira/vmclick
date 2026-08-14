@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VM Click | Materiais Elétricos e Hidráulicos em Curitiba</title>
 <meta name="description" content="Materiais elétricos, hidráulicos, iluminação, utilidades e pintura em Curitiba. Mais de 30.000 itens e atendimento técnico desde 2012. Loja no Portão.">
-<link rel="icon" href="assets/img/logo.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
 <link rel="preload" href="assets/fonts/inter-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/poppins-700-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/fonts.css">
@@ -67,6 +69,54 @@
     </div>
 
     <div class="hero__scroll" aria-hidden="true"><i></i>Role</div>
+  </section>
+
+  <!-- ================================================== BANNERS PROMOCIONAIS -->
+  <section class="section section--tight">
+    <div class="container">
+      <div class="carrossel" id="banners" role="group"
+           aria-roledescription="carrossel" aria-label="Ofertas em destaque">
+        <div class="carrossel__trilha">
+
+          <div class="carrossel__slide" data-titulo="Promoção em iluminação">
+            <a href="categoria.html?cat=iluminacao-led">
+              <picture>
+                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-iluminacao-1920.webp">
+                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-iluminacao-1920.jpg">
+                <source type="image/webp" srcset="assets/img/banners/promo-iluminacao-800.webp">
+                <img src="assets/img/banners/promo-iluminacao-800.jpg"
+                     alt="Promoção em iluminação: lâmpadas e materiais elétricos, LED a partir de R$ 19,90">
+              </picture>
+            </a>
+          </div>
+
+          <div class="carrossel__slide" data-titulo="Promoção em hidráulica">
+            <a href="produtos.html?q=pvc">
+              <picture>
+                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-hidraulica-1920.webp">
+                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-hidraulica-1920.jpg">
+                <source type="image/webp" srcset="assets/img/banners/promo-hidraulica-800.webp">
+                <img src="assets/img/banners/promo-hidraulica-800.jpg" fetchpriority="low"
+                     alt="Promoção em hidráulica: tubos e conexões, conexões PVC a partir de R$ 12,90">
+              </picture>
+            </a>
+          </div>
+
+          <div class="carrossel__slide" data-titulo="Promoção em ferramentas">
+            <a href="categoria.html?cat=ferramentas-manuais">
+              <picture>
+                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-ferramentas-1920.webp">
+                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-ferramentas-1920.jpg">
+                <source type="image/webp" srcset="assets/img/banners/promo-ferramentas-800.webp">
+                <img src="assets/img/banners/promo-ferramentas-800.jpg" fetchpriority="low"
+                     alt="Promoção em ferramentas: chaves e alicates, chave de fenda a partir de R$ 9,90">
+              </picture>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================================================== CONFIANÇA -->
@@ -140,17 +190,29 @@
         </div>
       </div>
 
-      <figure class="quote reveal">
-        <blockquote>
-          Nossa realização é estarmos presentes nas obras, em frente aos clientes na loja, cuidando das
-          especificações, informando os detalhes de instalação, fornecendo os melhores produtos. Sabemos
-          da qualidade que nos propomos a entregar, garantimos isso.
-        </blockquote>
-        <figcaption>
-          <span class="av">MV</span>
-          <span><b>Maurício Veiga</b><span>Fundador da VM Click</span></span>
-        </figcaption>
-      </figure>
+      <div class="stack-6">
+        <div class="foto foto--cover reveal">
+          <picture>
+            <source type="image/webp" srcset="assets/img/loja/interior-900.webp 900w, assets/img/loja/interior-1600.webp 1600w" sizes="(min-width: 900px) 46vw, 92vw">
+            <img src="assets/img/loja/interior-900.jpg"
+                 srcset="assets/img/loja/interior-900.jpg 900w, assets/img/loja/interior-1600.jpg 1600w"
+                 sizes="(min-width: 900px) 46vw, 92vw" loading="lazy" decoding="async"
+                 alt="Corredor da loja VM Click com prateleiras de material elétrico, tubos, tintas e ferragens">
+          </picture>
+        </div>
+
+        <figure class="quote reveal">
+          <blockquote>
+            Nossa realização é estarmos presentes nas obras, em frente aos clientes na loja, cuidando das
+            especificações, informando os detalhes de instalação, fornecendo os melhores produtos. Sabemos
+            da qualidade que nos propomos a entregar, garantimos isso.
+          </blockquote>
+          <figcaption>
+            <span class="av">MV</span>
+            <span><b>Maurício Veiga</b><span>Fundador da VM Click</span></span>
+          </figcaption>
+        </figure>
+      </div>
     </div>
   </section>
 
@@ -234,6 +296,8 @@ document.addEventListener('vm:ready', function () {
 
   document.getElementById('marcas').innerHTML =
     '<div class="marquee__track">' + grupoMarcas(false) + grupoMarcas(true) + '</div>';
+
+  VM.initCarrossel('#banners');
 
   VM.renderCategorias('#categorias');
   VM.renderDestaques('#destaques');

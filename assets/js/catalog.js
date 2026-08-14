@@ -67,6 +67,106 @@
     el.innerHTML = lista.map(VM.cardHTML).join('');
   };
 
+  /* ----------------------------------------------------------------------
+     1.1 VITRINE ROLANTE
+     Mesma lista de cards da grade, em trilha horizontal com scroll-snap.
+     O avanço automático é uma conveniência, não o único caminho: setas,
+     roda do mouse, arrastar e teclado funcionam sozinhos. Pausa no hover,
+     no foco, com a aba em segundo plano, e não roda se o sistema pedir
+     menos movimento.
+     ---------------------------------------------------------------------- */
+  VM.renderVitrine = function (alvo, lista, opts) {
+    var el = typeof alvo === 'string' ? VM.qs(alvo) : alvo;
+    if (!el) return;
+    opts = opts || {};
+
+    /* Sem produtos não existe vitrine: some com o bloco em vez de deixar
+       um buraco na página. */
+    if (!lista || !lista.length) {
+      el.innerHTML = '';
+      var secao = el.closest('section');
+      if (secao) secao.hidden = true;
+      return;
+    }
+
+    el.classList.add('vitrine');
+    el.innerHTML =
+      '<ul class="products vitrine__trilha" tabindex="0">' + lista.map(VM.cardHTML).join('') + '</ul>' +
+      '<div class="vitrine__nav">' +
+        '<button class="vitrine__seta vitrine__seta--ant" type="button" aria-label="Produtos anteriores">' +
+          VM.icon('chevron') + '</button>' +
+        '<button class="vitrine__seta vitrine__seta--prox" type="button" aria-label="Próximos produtos">' +
+          VM.icon('chevron') + '</button>' +
+      '</div>';
+
+    var trilha = VM.qs('.vitrine__trilha', el);
+    var ant = VM.qs('.vitrine__seta--ant', el);
+    var prox = VM.qs('.vitrine__seta--prox', el);
+    var reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var intervalo = opts.intervalo || 4200;
+    var timer = null;
+
+    function passo() {
+      var card = trilha.querySelector('.product');
+      if (!card) return trilha.clientWidth;
+      var estilo = window.getComputedStyle(trilha);
+      var gap = parseFloat(estilo.columnGap || estilo.gap) || 0;
+      return card.getBoundingClientRect().width + gap;
+    }
+
+    function limite() { return trilha.scrollWidth - trilha.clientWidth; }
+
+    function ir(dir) {
+      /* Chegou ao fim avançando: volta ao começo — a vitrine é um laço. */
+      if (dir > 0 && trilha.scrollLeft >= limite() - 4) {
+        trilha.scrollTo({ left: 0, behavior: 'smooth' });
+        return;
+      }
+      trilha.scrollBy({ left: passo() * dir, behavior: 'smooth' });
+    }
+
+    function sincronizarSetas() {
+      var temFolga = limite() > 4;
+      /* Sem folga não há o que rolar: a vitrine vira grade e as setas somem. */
+      el.classList.toggle('vitrine--fixa', !temFolga);
+      ant.disabled = !temFolga || trilha.scrollLeft <= 4;
+      /* Avançar nunca desliga: no fim da trilha ele volta ao começo. */
+      prox.disabled = !temFolga;
+    }
+
+    function parar() { if (timer) { clearInterval(timer); timer = null; } }
+    function tocar() {
+      if (reduzido || timer || limite() <= 4) return;
+      timer = setInterval(function () { ir(1); }, intervalo);
+    }
+
+    ant.addEventListener('click', function () { parar(); ir(-1); tocar(); });
+    prox.addEventListener('click', function () { parar(); ir(1); tocar(); });
+
+    trilha.addEventListener('scroll', sincronizarSetas, { passive: true });
+    trilha.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); parar(); ir(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); parar(); ir(1); }
+    });
+
+    el.addEventListener('mouseenter', parar);
+    el.addEventListener('mouseleave', tocar);
+    el.addEventListener('focusin', parar);
+    el.addEventListener('focusout', function (e) {
+      if (!el.contains(e.relatedTarget)) tocar();
+    });
+    el.addEventListener('touchstart', parar, { passive: true });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) parar(); else tocar();
+    });
+
+    window.addEventListener('resize', sincronizarSetas);
+
+    sincronizarSetas();
+    tocar();
+  };
+
   /* Card inteiro clicável. O link do título continua sendo o link real para
      teclado e leitor de tela; isto aqui só amplia a área de clique do mouse. */
   document.addEventListener('click', function (e) {
@@ -876,14 +976,76 @@
     '</a>';
   };
 
+  /* Curadoria (data/curadoria.js) é aplicada sobre o catálogo assim que o
+     arquivo carrega: marca os destaques e injeta o preço de referência das
+     ofertas. O catálogo em si continua sendo gerado pelo sync do Olist —
+     nada aqui é escrito de volta em data/produtos.js. */
+  function aplicarCuradoria() {
+    var c = window.VM_CURADORIA;
+    if (!c) return;
+
+    var porSku = {};
+    VM.produtos().forEach(function (p) { porSku[p.sku] = p; });
+
+    (c.destaques || []).forEach(function (sku, i) {
+      var p = porSku[sku];
+      if (!p) return;                       /* sku fora do catálogo: ignora */
+      p.destaque = true;
+      p.ordemDestaque = i;
+    });
+
+    (c.ofertas || []).forEach(function (o, i) {
+      var p = o && porSku[o.sku];
+      if (!p) return;
+      /* Preço "de" menor ou igual ao preço atual não é oferta: descarta em
+         vez de renderizar um desconto negativo. */
+      if (!(o.precoDe > p.preco)) return;
+      p.precoDe = o.precoDe;
+      p.ordemOferta = i;
+    });
+  }
+  aplicarCuradoria();
+
+  function porOrdem(campo) {
+    return function (a, b) {
+      var x = typeof a[campo] === 'number' ? a[campo] : 999;
+      var y = typeof b[campo] === 'number' ? b[campo] : 999;
+      return x - y;
+    };
+  }
+
+  /* Rede de segurança: se a curadoria estiver vazia (ou os skus saírem do
+     catálogo), a home ainda precisa ter vitrine. Seleção determinística —
+     um produto por categoria, priorizando quem tem foto e giro de estoque. */
+  function selecaoAutomatica(n) {
+    var porCat = {};
+    VM.produtos().forEach(function (p) {
+      if (p.estoque <= 0) return;
+      var atual = porCat[p.cat];
+      var melhor = !atual ||
+        ((p.imagens && p.imagens.length ? 1 : 0) > (atual.imagens && atual.imagens.length ? 1 : 0)) ||
+        (!!p.marca && !atual.marca) ||
+        (p.preco > atual.preco);
+      if (melhor) porCat[p.cat] = p;
+    });
+    return Object.keys(porCat).map(function (k) { return porCat[k]; }).slice(0, n);
+  }
+
   VM.renderDestaques = function (sel) {
-    var lista = VM.produtos().filter(function (p) { return p.destaque && p.estoque > 0; }).slice(0, 8);
-    VM.renderProdutos(sel, lista);
+    var lista = VM.produtos()
+      .filter(function (p) { return p.destaque && p.estoque > 0; })
+      .sort(porOrdem('ordemDestaque'))
+      .slice(0, 12);
+    if (!lista.length) lista = selecaoAutomatica(12);
+    VM.renderVitrine(sel, lista);
   };
 
   VM.renderOfertas = function (sel) {
-    var lista = VM.produtos().filter(function (p) { return p.precoDe && p.estoque > 0; }).slice(0, 4);
-    VM.renderProdutos(sel, lista);
+    var lista = VM.produtos()
+      .filter(function (p) { return p.precoDe && p.estoque > 0; })
+      .sort(porOrdem('ordemOferta'))
+      .slice(0, 12);
+    VM.renderVitrine(sel, lista, { intervalo: 5200 });
   };
 })();
 

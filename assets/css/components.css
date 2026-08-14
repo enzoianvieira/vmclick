@@ -350,6 +350,59 @@ li.product, .product {
 .product.is-out .product__thumb svg.ico { color: var(--n-500); }
 
 /* ==========================================================================
+   5.1 VITRINE ROLANTE  (blocos "Destaques" e "Ofertas" da home)
+   A trilha é scroll nativo com snap: arrastar, roda do mouse e teclado
+   funcionam sem JS. O avanço automático e as setas são acréscimo.
+   ========================================================================== */
+.vitrine { position: relative; }
+
+/* .products é grid; aqui vira trilha horizontal (dois nomes de classe para
+   ganhar da especificidade de `ul.products`). */
+.products.vitrine__trilha {
+  display: flex; gap: var(--grid-gap);
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* o card sobe 3px no hover e projeta sombra: sem folga, o overflow corta */
+  padding: 5px 2px 8px;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.products.vitrine__trilha::-webkit-scrollbar { display: none; }
+.products.vitrine__trilha:focus-visible { outline: 2px solid var(--teal-600); outline-offset: 4px; border-radius: var(--r-lg); }
+
+.vitrine__trilha > .product {
+  flex: 0 0 clamp(198px, 23vw, 258px);
+  scroll-snap-align: start;
+}
+@media (max-width: 479px) { .vitrine__trilha > .product { flex-basis: 62vw; } }
+
+/* Setas embaixo da trilha, fora do caminho do produto: sempre visíveis,
+   sem cobrir card nem depender de hover (que no toque não existe). */
+.vitrine__nav { display: flex; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-6); }
+
+.vitrine__seta {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); box-shadow: var(--sh-sm);
+  transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease),
+              color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.vitrine__seta svg { width: 20px; height: 20px; }
+.vitrine__seta--ant { transform: rotate(180deg); }
+.vitrine__seta:hover { background: var(--teal-700); color: #fff; border-color: var(--teal-700); }
+.vitrine__seta:focus-visible { outline: 2px solid var(--teal-600); outline-offset: 3px; }
+
+/* Início da trilha: a seta de voltar fica apagada, não some — sumir mudaria a
+   posição da outra a cada rolagem. */
+.vitrine__seta:disabled { opacity: .3; pointer-events: none; box-shadow: none; }
+/* Cabe tudo na tela: não há o que rolar, então não há navegação. */
+.vitrine--fixa .vitrine__nav { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .products.vitrine__trilha { scroll-behavior: auto; scroll-snap-type: none; }
+}
+
+/* ==========================================================================
    6. FILTROS / TOOLBAR DA VITRINE
    ========================================================================== */
 .shop-toolbar {
@@ -678,6 +731,10 @@ li.product, .product {
   text-transform: uppercase; margin-bottom: var(--sp-4);
 }
 .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); font-size: var(--fs-sm); }
+/* "Ver tudo" fecha a lista curta de categorias: precisa ler como saída, não
+   como mais um item. */
+.footer-link--forte { color: var(--teal-300); font-weight: var(--fw-medium); }
+.footer-link--forte::after { content: ' →'; }
 .footer-brand {
   display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3);
   margin-bottom: var(--sp-5);
@@ -772,6 +829,7 @@ li.product, .product {
 .foto {
   border-radius: var(--r-xl); overflow: hidden;
   border: 1px solid var(--border); background: var(--n-100);
+  margin: 0;   /* <figure> nasce com margin lateral de 40px do agente do usuário */
 }
 .foto img { display: block; width: 100%; height: auto; }
 .foto--cover img { aspect-ratio: 16 / 10; object-fit: cover; }

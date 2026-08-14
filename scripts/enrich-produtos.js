@@ -37,6 +37,7 @@ const CACHE_DIR = path.join(__dirname, '.cache');
 const CATS_PATH = path.join(__dirname, 'categorias.json');
 const MAP_LEGACY_PATH = path.join(__dirname, 'categoria-map.json');
 const REGRAS = require('./regras-catalogo.js');
+const { detectarMarca } = require('./regras-marcas.js');
 
 const API_BASE = 'https://api.tiny.com.br/public-api/v3';
 
@@ -260,7 +261,10 @@ function detectarSubCategoria(nome) {
 function mapDetalhe(d, cats) {
   if (!d) return null;
 
-  const marca = d.marca && d.marca.nome ? d.marca.nome : '';
+  /* O cadastro do Olist raramente preenche `marca`. Quando vier vazia,
+     deriva do nome do produto (regras em regras-marcas.js). O dado do ERP
+     sempre tem precedência sobre a derivação. */
+  const marca = (d.marca && d.marca.nome) ? d.marca.nome : detectarMarca(d.descricao || '');
   const catId = d.categoria && d.categoria.id ? String(d.categoria.id) : null;
   const catPath = d.categoria && d.categoria.caminhoCompleto ? d.categoria.caminhoCompleto : (d.categoria && d.categoria.nome) || '';
 

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog | VM Click</title>
+<meta name="description" content="Conteúdo técnico de elétrica, iluminação e obra escrito por quem atende no balcão: dimensionamento de circuitos, escolha de LED e checklists de material.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <span aria-current="page">Blog</span>
+      </nav>
+      <h1>O que a gente explica<br>no balcão, por escrito</h1>
+      <p>
+        Dimensionamento, escolha de material e ordem de compra na obra. O mesmo conteúdo que nossa
+        equipe técnica passa no atendimento — para você chegar decidido ou decidir aqui.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="post-grid" id="posts"></div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="cta-band reveal">
+        <div>
+          <h2>Dúvida na especificação? Pergunta pra gente.</h2>
+          <p>
+            Manda a planta, a lista ou só a dúvida no WhatsApp. Quem responde é quem atende no balcão
+            todo dia — não é robô e não é vendedor de call center.
+          </p>
+        </div>
+        <div class="row">
+          <a class="btn btn--light btn--lg" id="cta-wa" href="#">Falar com a equipe técnica</a>
+          <a class="btn btn--outline btn--lg" href="produtos.html" style="color:#fff;border-color:rgba(255,255,255,.5)">Ver catálogo</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="data/blog.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script src="assets/js/blog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  VM.renderBlog('#posts');
+  document.getElementById('cta-wa').href = VM.EMPRESA.whatsapp;
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

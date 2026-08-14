@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Como dimensionar disjuntor e cabo sem errar o circuito | VM Click</title>
+<meta name="description" content="A ordem certa para dimensionar um circuito: corrente de projeto, seção do condutor, disjuntor e queda de tensão. Com tabela de seções e os erros mais comuns de obra.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <a href="blog.html">Blog</a><span class="sep">/</span>
+        <span aria-current="page">Disjuntor e cabo</span>
+      </nav>
+      <span class="post__cat">Elétrica</span>
+      <h1>Como dimensionar disjuntor e cabo sem errar o circuito</h1>
+      <p class="post__meta">
+        <time datetime="2026-08-06">6 de agosto de 2026</time>
+        <span aria-hidden="true">·</span> 8 min de leitura
+      </p>
+    </div>
+  </section>
+
+  <article class="section post">
+    <div class="container post__wrap">
+
+      <figure class="post__capa reveal">
+        <picture>
+          <source type="image/webp" srcset="assets/img/loja/painel-900.webp 900w, assets/img/loja/painel-1600.webp 1600w" sizes="(min-width: 1000px) 70vw, 92vw">
+          <img src="assets/img/loja/painel-900.jpg"
+               srcset="assets/img/loja/painel-900.jpg 900w, assets/img/loja/painel-1600.jpg 1600w"
+               sizes="(min-width: 1000px) 70vw, 92vw" decoding="async"
+               alt="Quadro de distribuição com disjuntores DIN alinhados no trilho">
+        </picture>
+      </figure>
+
+      <div class="post__body">
+        <p class="post__lead">
+          Quase todo circuito que desarma sem motivo, ou que esquenta a caixa da tomada, nasceu do mesmo
+          erro: alguém escolheu o disjuntor primeiro e o cabo depois. A ordem é o contrário — e a conta
+          é mais simples do que parece.
+        </p>
+
+        <h2>A ordem correta: carga → cabo → disjuntor</h2>
+        <p>
+          O disjuntor não protege o aparelho. Ele protege o <b>cabo</b>. Por isso ele é o último a ser
+          escolhido: precisa desarmar antes que o condutor chegue perto do limite térmico dele.
+        </p>
+        <p>A sequência é sempre esta:</p>
+        <ol>
+          <li><b>Corrente de projeto (I<sub>b</sub>)</b> — quanto o circuito vai puxar de verdade, em ampères.</li>
+          <li><b>Seção do condutor</b> — o cabo que aguenta essa corrente no método de instalação usado.</li>
+          <li><b>Capacidade de condução (I<sub>z</sub>)</b> — quanto aquele cabo aguenta naquela condição.</li>
+          <li><b>Disjuntor (I<sub>n</sub>)</b> — um valor entre I<sub>b</sub> e I<sub>z</sub>.</li>
+          <li><b>Queda de tensão</b> — se estourar o limite, sobe a seção do cabo e refaz.</li>
+        </ol>
+        <p>
+          A regra que amarra tudo é <b>I<sub>b</sub> ≤ I<sub>n</sub> ≤ I<sub>z</sub></b>. Se o disjuntor for maior
+          que a capacidade do cabo, ele nunca vai desarmar por sobrecarga — o cabo derrete antes.
+        </p>
+
+        <h2>Achando a corrente de projeto</h2>
+        <p>
+          Em circuito monofásico, I<sub>b</sub> = potência ÷ tensão. Um chuveiro de 7.500 W em 220 V puxa
+          cerca de 34 A. O mesmo chuveiro em 127 V puxaria 59 A — motivo de chuveiro elétrico praticamente
+          sempre ir em 220 V.
+        </p>
+        <p>
+          Para tomadas de uso geral, não some a potência de tudo que pode ser ligado: use os critérios de
+          quantidade e potência mínima por ambiente da NBR 5410, e distribua em mais de um circuito. Um
+          circuito de TUG com 2,5 mm² protegido em 20 A dá conta da maioria dos cômodos.
+        </p>
+
+        <h2>Tabela de partida para instalação residencial</h2>
+        <p>
+          Valores usuais para <b>cobre, isolação PVC 70 °C, método B1</b> (condutores em eletroduto embutido
+          em alvenaria), dois condutores carregados. É ponto de partida — o projeto manda.
+        </p>
+
+        <div class="tabela-rolagem">
+          <table class="tabela">
+            <thead>
+              <tr><th>Seção</th><th>I<sub>z</sub> aprox.</th><th>Disjuntor usual</th><th>Onde costuma entrar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1,5 mm²</td><td>17,5 A</td><td>10 A</td><td>Iluminação</td></tr>
+              <tr><td>2,5 mm²</td><td>24 A</td><td>16 A ou 20 A</td><td>Tomadas de uso geral</td></tr>
+              <tr><td>4 mm²</td><td>32 A</td><td>25 A</td><td>Tomadas de cozinha e área de serviço</td></tr>
+              <tr><td>6 mm²</td><td>41 A</td><td>32 A</td><td>Chuveiro, forno elétrico</td></tr>
+              <tr><td>10 mm²</td><td>57 A</td><td>40 A</td><td>Chuveiro potente, ar-condicionado maior</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Dois detalhes que derrubam essa tabela na prática: <b>agrupamento</b> e <b>temperatura</b>. Vários
+          circuitos no mesmo eletroduto reduzem a capacidade de cada um (fator de agrupamento), e forro
+          quente sob telha de fibrocimento também. Em eletroduto cheio, é comum precisar subir uma seção.
+        </p>
+
+        <h2>Queda de tensão: o critério que todo mundo esquece</h2>
+        <p>
+          A NBR 5410 limita a queda de tensão em <b>4 % do ramal</b> para instalações alimentadas por rede
+          de distribuição. Em circuito curto isso quase nunca aparece; em obra grande, galpão ou puxada
+          longa até a edícula, aparece sempre.
+        </p>
+        <p>
+          Sintoma clássico: lâmpada que oscila quando o motor do portão parte, chuveiro que "não esquenta"
+          mesmo com disjuntor certo. Nesses casos o cabo aguenta a corrente, mas a distância come tensão —
+          a correção é aumentar a seção, não trocar o disjuntor.
+        </p>
+
+        <h2>Curva B ou curva C?</h2>
+        <ul>
+          <li><b>Curva B</b> — dispara entre 3 e 5 vezes a corrente nominal. Circuitos resistivos: iluminação, tomadas, chuveiro.</li>
+          <li><b>Curva C</b> — dispara entre 5 e 10 vezes. Cargas com pico de partida: motores, bombas, ar-condicionado, compressores.</li>
+        </ul>
+        <p>
+          Trocar curva B por C para "parar de desarmar" sem olhar o cabo é o atalho que vira ocorrência.
+          Se desarma na partida do motor, o problema é a curva. Se desarma depois de meia hora ligado, o
+          problema é sobrecarga — e a resposta está no cabo.
+        </p>
+
+        <h2>DR e DPS não são opcionais</h2>
+        <p>
+          Dispositivo diferencial residual de <b>30 mA</b> é exigido nos circuitos de áreas molhadas —
+          banheiro, cozinha, área de serviço, área externa. É o que protege pessoa, não instalação.
+        </p>
+        <p>
+          O DPS entra na origem do quadro, protegendo a instalação contra surto vindo da rede. Em região
+          com muita descarga atmosférica, sai muito mais barato que a soma dos equipamentos queimados.
+        </p>
+
+        <div class="post__nota">
+          <b>Antes de comprar:</b> traga a lista de circuitos ou a planta. A gente confere seção, curva,
+          quantidade de polos e o espaço em módulos DIN que sobra no seu quadro — evita a segunda viagem
+          na sexta à tarde. Projeto e execução exigem profissional habilitado com ART.
+        </div>
+
+        <h2>Erros que a gente vê toda semana</h2>
+        <ul>
+          <li>Disjuntor de 25 A protegendo cabo de 2,5 mm².</li>
+          <li>Circuito de chuveiro sem condutor de proteção (terra).</li>
+          <li>Emenda dentro de eletroduto, fora de caixa de passagem.</li>
+          <li>Neutro em cor diferente de azul-claro — some a rastreabilidade do circuito.</li>
+          <li>Quadro sem folga: nenhum módulo livre para ampliação futura.</li>
+          <li>Cabo rígido de instalação usado como flexível em quadro que vibra.</li>
+        </ul>
+      </div>
+
+    </div>
+  </article>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="sec-head"><span class="eyebrow">Leia também</span><h2>Continua aqui</h2></div>
+      <div class="post-grid" id="relacionados"></div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="cta-band reveal">
+        <div>
+          <h2>Manda a lista do quadro que a gente orça.</h2>
+          <p>Disjuntores, DR, DPS, barramento e cabo por circuito — conferidos antes de fechar o pedido.</p>
+        </div>
+        <div class="row">
+          <a class="btn btn--light btn--lg" id="cta-wa" href="#">Enviar lista no WhatsApp</a>
+          <a class="btn btn--outline btn--lg" href="categoria.html?cat=disjuntores" style="color:#fff;border-color:rgba(255,255,255,.5)">Ver disjuntores</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="data/blog.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/catalog.js"></script>
+<script src="assets/js/blog.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  VM.renderPostsRelacionados('#relacionados', 'blog-dimensionar-disjuntor-cabo.html');
+  document.getElementById('cta-wa').href = VM.EMPRESA.whatsapp;
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

@@ -15,6 +15,7 @@
     raiz.classList.remove('js-anim');
     VMAnim.cards = function () {};
     VMAnim.listas = function () {};
+    VMAnim.revelar = function () {};
     return;
   }
 
@@ -67,19 +68,34 @@
   /* ======================================================================
      3. Revelações por scroll
      ====================================================================== */
-  function revelacoes() {
-    if (!window.ScrollTrigger) {
-      gsap.set('.reveal', { opacity: 1, y: 0 });
-      return;
-    }
-    var itens = document.querySelectorAll('.reveal');
+  /* Pode ser chamado de novo depois de injetar HTML: cada elemento é marcado
+     ao ser preparado, então conteúdo renderizado por JS (blog, listagens)
+     aparece em vez de ficar preso em opacity 0. */
+  VMAnim.revelar = function (escopo) {
+    var raizBusca = typeof escopo === 'string' ? document.querySelector(escopo) : (escopo || document);
+    if (!raizBusca) return;
+
+    var itens = raizBusca.querySelectorAll('.reveal:not([data-revelado])');
+    if (!itens.length) return;
+
     Array.prototype.forEach.call(itens, function (el) {
+      el.setAttribute('data-revelado', '');
+      if (!window.ScrollTrigger) {
+        gsap.set(el, { opacity: 1, y: 0 });
+        return;
+      }
       gsap.to(el, {
         opacity: 1, y: 0, duration: .7, ease: EASE,
         scrollTrigger: { trigger: el, start: 'top 90%', once: true }
       });
     });
-  }
+
+    /* Conteúdo injetado muda a altura da página: sem recalcular, os gatilhos
+       novos ficam com a posição errada e nunca disparam. */
+    if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+  };
+
+  function revelacoes() { VMAnim.revelar(document); }
 
   /* ======================================================================
      4. Grades de produto (chamado depois de cada render)

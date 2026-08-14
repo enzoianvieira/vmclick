@@ -74,6 +74,13 @@
 .hero__cats a:hover { background: rgba(255,255,255,.09); color: #fff; padding-left: var(--sp-4); }
 .hero__cats svg.ico { width: 26px; height: 26px; color: var(--teal-300); flex: none; }
 .hero__cats .arrow { margin-left: auto; width: 16px; height: 16px; opacity: .5; }
+/* Saída para o catálogo completo: mesma lista, peso menor que as linhas. */
+.hero__cats-todas {
+  margin-top: var(--sp-2); border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: var(--sp-4); color: var(--teal-300);
+  font-size: var(--fs-xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+}
+.hero__cats-todas .arrow { opacity: .8; }
 @media (max-width: 979px) { .hero__panel { display: none; } }
 
 /* Ajuste fino no celular: menos respiro vertical para o hero caber melhor na
@@ -215,8 +222,10 @@
 /* ==========================================================================
    SOBRE / DEPOIMENTO
    ========================================================================== */
-.about-grid { display: grid; gap: var(--sp-10); grid-template-columns: 1fr; align-items: center; }
-@media (min-width: 900px) { .about-grid { grid-template-columns: 1fr 1fr; gap: var(--sp-16); } }
+.about-grid { display: grid; gap: var(--sp-10); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) {
+  .about-grid { grid-template-columns: 1fr 1fr; column-gap: var(--sp-16); row-gap: var(--sp-12); }
+}
 .about-copy p { color: var(--text-muted); margin-bottom: var(--sp-4); max-width: var(--measure); }
 
 .timeline { list-style: none; display: flex; flex-direction: column; gap: var(--sp-6); }
@@ -237,6 +246,7 @@
 .quote {
   background: var(--teal-800); color: #fff; border-radius: var(--r-xl);
   padding: clamp(28px, 5vw, 56px); position: relative; overflow: hidden;
+  margin: 0;   /* <figure> nasce com margin lateral de 40px do agente do usuário */
 }
 .quote::before {
   content: '"'; position: absolute; top: -34px; right: 18px;
@@ -251,6 +261,12 @@
   width: 46px; height: 46px; border-radius: 50%; background: var(--teal-600);
   display: grid; place-items: center; font-family: var(--font-display);
   font-weight: var(--fw-bold); color: #fff; flex: none;
+}
+/* Citação que fecha a seção "Quem somos": ocupa a largura das duas colunas,
+   abaixo do par texto + foto. */
+.quote--larga { grid-column: 1 / -1; }
+@media (min-width: 900px) {
+  .quote--larga blockquote { max-width: 68ch; font-size: clamp(19px, 1.7vw, 24px); }
 }
 .quote figcaption b { color: #fff; display: block; }
 .quote figcaption span { font-size: var(--fs-sm); color: #9FC6BF; }
@@ -542,6 +558,82 @@
 .page-hero .woocommerce-breadcrumb a { color: #A9CCC6; }
 .page-hero .woocommerce-breadcrumb a:hover { color: #fff; }
 .page-hero .woocommerce-breadcrumb span[aria-current] { color: #fff; }
+
+/* ==========================================================================
+   BLOG
+   Índice em cards e leitura do post em coluna única de medida controlada.
+   ========================================================================== */
+.post-grid { display: grid; gap: var(--sp-6); grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+
+.post-card {
+  border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden;
+  background: var(--surface); display: flex;
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.post-card:hover { border-color: var(--teal-300); transform: translateY(-3px); box-shadow: var(--sh-md); }
+.post-card__link { display: flex; flex-direction: column; color: inherit; width: 100%; }
+.post-card__capa { aspect-ratio: 16 / 9; overflow: hidden; background: var(--n-100); }
+.post-card__capa img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform var(--dur-slow) var(--ease);
+}
+.post-card:hover .post-card__capa img { transform: scale(1.04); }
+.post-card__body { padding: var(--sp-6); display: flex; flex-direction: column; gap: var(--sp-3); flex: 1; }
+.post-card__cat {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+  color: var(--red-600); font-weight: var(--fw-semibold);
+}
+.post-card__body h3 { font-size: var(--fs-lg); line-height: 1.28; }
+.post-card:hover .post-card__body h3 { color: var(--teal-700); }
+.post-card__body p { color: var(--text-muted); font-size: var(--fs-sm); }
+.post-card__meta {
+  margin-top: auto; padding-top: var(--sp-2); display: flex; gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-xs); color: var(--text-subtle);
+}
+
+/* --- Leitura do post --------------------------------------------------- */
+.post__cat {
+  display: inline-block; position: relative; z-index: 1; margin-bottom: var(--sp-3);
+  font-size: var(--fs-xs); letter-spacing: var(--ls-wide); text-transform: uppercase;
+  font-weight: var(--fw-semibold); color: var(--teal-300);
+}
+.page-hero .post__meta {
+  display: flex; gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-sm); color: #A9CCC6; margin-top: var(--sp-5);
+}
+.post__wrap { max-width: 820px; }
+/* <figure> traz margin lateral de 40px do agente do usuário: zera antes. */
+.post__capa { margin: 0 0 var(--sp-10); border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--border); }
+.post__capa img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+
+.post__body { display: flex; flex-direction: column; gap: var(--sp-5); }
+.post__body h2 { font-size: clamp(21px, 2.4vw, 28px); margin-top: var(--sp-6); }
+.post__body p, .post__body li { color: var(--text-muted); max-width: 68ch; }
+.post__body b { color: var(--text); font-weight: var(--fw-semibold); }
+.post__lead { font-size: clamp(17px, 1.9vw, 20px); line-height: 1.6; color: var(--text) !important; }
+.post__body ul, .post__body ol { display: flex; flex-direction: column; gap: var(--sp-2); padding-left: var(--sp-6); }
+.post__body ul { list-style: disc; }
+.post__body ol { list-style: decimal; }
+.post__body li::marker { color: var(--teal-600); }
+
+.post__nota {
+  border-left: 3px solid var(--teal-600); background: var(--teal-50);
+  padding: var(--sp-5) var(--sp-6); border-radius: 0 var(--r-lg) var(--r-lg) 0;
+  color: var(--text-muted); font-size: var(--fs-sm); max-width: 68ch;
+}
+.post__nota b { color: var(--teal-800); }
+
+/* Tabela larga rola dentro do próprio container, nunca a página. */
+.tabela-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabela {
+  width: 100%; border-collapse: collapse; font-size: var(--fs-sm); min-width: 460px;
+  border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden;
+}
+.tabela th, .tabela td { padding: var(--sp-3) var(--sp-4); text-align: left; border-bottom: 1px solid var(--border); }
+.tabela thead th { background: var(--n-50); color: var(--text); font-weight: var(--fw-semibold); white-space: nowrap; }
+.tabela tbody td { color: var(--text-muted); }
+.tabela tbody td:first-child { color: var(--text); font-weight: var(--fw-medium); white-space: nowrap; }
+.tabela tbody tr:last-child td { border-bottom: 0; }
 
 /* Serviços */
 .svc-grid { display: grid; gap: var(--sp-6); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }

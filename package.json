@@ -13,6 +13,8 @@
     "enrich-produtos": "node scripts/enrich-produtos.js",
     "enrich-produtos:dry": "node scripts/enrich-produtos.js --dry-run",
     "enrich-produtos:cache": "node scripts/enrich-produtos.js --cache-only",
+    "derivar-marcas": "node scripts/derivar-marcas.js",
+    "derivar-marcas:dry": "node scripts/derivar-marcas.js --dry-run",
     "otimizar-imagens": "node scripts/otimizar-imagens.js",
     "otimizar-imagens:force": "node scripts/otimizar-imagens.js --force"
   },

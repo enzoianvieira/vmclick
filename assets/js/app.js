@@ -148,9 +148,14 @@
     { t: 'Início',     h: 'index.html' },
     { t: 'Produtos',   h: 'produtos.html', mega: true },
     { t: 'Serviços',   h: 'servicos.html' },
+    { t: 'Blog',       h: 'blog.html' },
     { t: 'Quem Somos', h: 'quem-somos.html' },
     { t: 'Contato',    h: 'contato.html' }
   ];
+
+  /* Categorias que representam a loja no rodapé. O resto do catálogo entra
+     por "Ver tudo" — rodapé é orientação, não índice. */
+  var CATS_RODAPE = ['eletrica', 'cabos-fios', 'iluminacao-led', 'ferramentas-manuais'];
 
   /* ======================================================================
      4. HEADER
@@ -229,7 +234,16 @@
      5. RODAPÉ
      ====================================================================== */
   function footerHTML() {
-    var cats = VM.categorias().map(function (c) {
+    var escolhidas = CATS_RODAPE
+      .map(function (slug) { return VM.categoria(slug); })
+      .filter(Boolean);
+
+    /* Slug removido do catálogo não pode deixar buraco: completa com o que houver. */
+    VM.categorias().forEach(function (c) {
+      if (escolhidas.length < 4 && escolhidas.indexOf(c) === -1) escolhidas.push(c);
+    });
+
+    var cats = escolhidas.map(function (c) {
       return '<li><a href="categoria.html?cat=' + c.slug + '">' + c.nome + '</a></li>';
     }).join('');
 
@@ -247,11 +261,12 @@
       '</div>' +
 
       '<div class="footer-col"><h4>Categorias</h4><ul>' + cats +
-        '<li><a href="produtos.html">Ver tudo</a></li></ul></div>' +
+        '<li><a class="footer-link--forte" href="produtos.html">Ver tudo</a></li></ul></div>' +
 
       '<div class="footer-col"><h4>Institucional</h4><ul>' +
         '<li><a href="quem-somos.html">Quem somos</a></li>' +
         '<li><a href="servicos.html">Projetos e serviços</a></li>' +
+        '<li><a href="blog.html">Blog</a></li>' +
         '<li><a href="contato.html">Contato</a></li>' +
         '<li><a href="politica.html">Política de privacidade</a></li>' +
         '<li><a href="politica.html#trocas">Trocas e devoluções</a></li>' +

@@ -150,7 +150,7 @@
         </div>
         <a class="btn btn--outline" href="produtos.html">Ver todos os produtos</a>
       </div>
-      <ul class="products" id="destaques"></ul>
+      <div class="vitrine" id="destaques"></div>
     </div>
   </section>
 
@@ -164,7 +164,7 @@
         </div>
         <p>Condições válidas para a loja física e para o site enquanto durar o estoque.</p>
       </div>
-      <ul class="products" id="ofertas"></ul>
+      <div class="vitrine" id="ofertas"></div>
     </div>
   </section>
 
@@ -190,29 +190,29 @@
         </div>
       </div>
 
-      <div class="stack-6">
-        <div class="foto foto--cover reveal">
-          <picture>
-            <source type="image/webp" srcset="assets/img/loja/interior-900.webp 900w, assets/img/loja/interior-1600.webp 1600w" sizes="(min-width: 900px) 46vw, 92vw">
-            <img src="assets/img/loja/interior-900.jpg"
-                 srcset="assets/img/loja/interior-900.jpg 900w, assets/img/loja/interior-1600.jpg 1600w"
-                 sizes="(min-width: 900px) 46vw, 92vw" loading="lazy" decoding="async"
-                 alt="Corredor da loja VM Click com prateleiras de material elétrico, tubos, tintas e ferragens">
-          </picture>
-        </div>
-
-        <figure class="quote reveal">
-          <blockquote>
-            Nossa realização é estarmos presentes nas obras, em frente aos clientes na loja, cuidando das
-            especificações, informando os detalhes de instalação, fornecendo os melhores produtos. Sabemos
-            da qualidade que nos propomos a entregar, garantimos isso.
-          </blockquote>
-          <figcaption>
-            <span class="av">MV</span>
-            <span><b>Maurício Veiga</b><span>Fundador da VM Click</span></span>
-          </figcaption>
-        </figure>
+      <div class="foto foto--cover reveal">
+        <picture>
+          <source type="image/webp" srcset="assets/img/loja/interior-900.webp 900w, assets/img/loja/interior-1600.webp 1600w" sizes="(min-width: 900px) 46vw, 92vw">
+          <img src="assets/img/loja/interior-900.jpg"
+               srcset="assets/img/loja/interior-900.jpg 900w, assets/img/loja/interior-1600.jpg 1600w"
+               sizes="(min-width: 900px) 46vw, 92vw" loading="lazy" decoding="async"
+               alt="Corredor da loja VM Click com prateleiras de material elétrico, tubos, tintas e ferragens">
+        </picture>
       </div>
+
+      <!-- A citação ocupa as duas colunas: texto e foto emparelham em cima,
+           a fala do fundador fecha a seção embaixo. -->
+      <figure class="quote quote--larga reveal">
+        <blockquote>
+          Nossa realização é estarmos presentes nas obras, em frente aos clientes na loja, cuidando das
+          especificações, informando os detalhes de instalação, fornecendo os melhores produtos. Sabemos
+          da qualidade que nos propomos a entregar, garantimos isso.
+        </blockquote>
+        <figcaption>
+          <span class="av">MV</span>
+          <span><b>Maurício Veiga</b><span>Fundador da VM Click</span></span>
+        </figcaption>
+      </figure>
     </div>
   </section>
 
@@ -251,6 +251,7 @@
 
 <script src="data/produtos.js"></script>
 <script src="data/marcas.js" onerror="window.VM_MARCAS=[]"></script>
+<script src="data/curadoria.js" onerror="window.VM_CURADORIA=null"></script>
 <script src="assets/js/sprite.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -272,12 +273,25 @@ document.addEventListener('vm:ready', function () {
       '<div><div class="trust__k">' + t.k + '</div><div class="trust__v">' + t.v + '</div></div></div>';
   }).join('');
 
-  /* painel de categorias do hero */
-  document.getElementById('hero-cats').innerHTML = VM.categorias().map(function (c) {
+  /* Painel de categorias do hero: porta de entrada, não índice. Cinco linhas
+     principais + serviços; o catálogo inteiro fica a um clique em "Ver todas". */
+  var LINHAS_HERO = ['eletrica', 'cabos-fios', 'iluminacao-led', 'ferramentas-manuais', 'ferragens'];
+
+  var linhas = LINHAS_HERO
+    .map(function (slug) { return VM.categoria(slug); })
+    .filter(Boolean);
+
+  /* Se algum slug sair do catálogo no próximo sync, completa com o que existir. */
+  VM.categorias().forEach(function (c) {
+    if (linhas.length < 5 && linhas.indexOf(c) === -1) linhas.push(c);
+  });
+
+  document.getElementById('hero-cats').innerHTML = linhas.map(function (c) {
     return '<li><a href="categoria.html?cat=' + c.slug + '">' + VM.ico(c.icone) + c.curto +
       VM.icon('seta', 'arrow') + '</a></li>';
   }).join('') +
-  '<li><a href="servicos.html">' + VM.ico('p-projeto') + 'Projetos e serviços' + VM.icon('seta', 'arrow') + '</a></li>';
+  '<li><a href="servicos.html">' + VM.ico('p-projeto') + 'Projetos e serviços' + VM.icon('seta', 'arrow') + '</a></li>' +
+  '<li><a class="hero__cats-todas" href="produtos.html">Ver todas as linhas' + VM.icon('seta', 'arrow') + '</a></li>';
 
   /* esteira de marcas - vem de data/marcas.js (gerado pelo enrich a partir do Olist).
      Fallback: lista mínima se arquivo não existir. */

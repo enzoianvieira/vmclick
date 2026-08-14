@@ -187,6 +187,8 @@ node scripts/enrich-produtos.js --force
 | `npm run enrich-produtos:dry` | Simula: baixa mas não grava `data/produtos.js` |
 | `npm run enrich-produtos:cache` | Regenera `data/produtos.js` a partir do cache local (sem requests) |
 | `npm run sync-tiny` | Sync leve: só lista produtos, sem detalhe (legado — use `enrich`) |
+| `npm run derivar-marcas` | Deriva a marca pelo nome do produto e regenera `data/marcas.js` (sem API) |
+| `npm run derivar-marcas:dry` | Só o relatório de detecção, sem escrever |
 | `npm run otimizar-imagens` | Gera as imagens servidas pelo site a partir de `assets/img/_originais/` (precisa de ffmpeg) |
 | `npm run otimizar-imagens:force` | Idem, reprocessando tudo mesmo que a saída já exista |
 
@@ -212,8 +214,19 @@ node scripts/enrich-produtos.js --force
 
 ### Marcas
 - ✅ Extração automática das top 20 marcas do catálogo real
+- ✅ **Derivação por nome de produto** quando o Olist devolve `marca` vazia (regras em `scripts/regras-marcas.js`)
 - ✅ Cores da esteira geradas dinamicamente
 - ✅ Home consome `data/marcas.js` em vez de lista hardcoded
+
+### Curadoria da home
+- ✅ `data/curadoria.js` define "Destaques da loja" (por SKU) e "Ofertas da semana" (SKU + preço de referência)
+- ✅ Arquivo editável à mão, nunca sobrescrito pelo sync
+- ✅ Fallback determinístico: sem curadoria, os destaques são escolhidos por categoria/estoque
+- ✅ Vitrine rolante (`VM.renderVitrine`) com autoplay, setas, arrasto e pausa em hover/foco
+
+### Blog
+- ✅ `blog.html` + 3 posts técnicos, com "leia também" e CTA
+- ✅ Índice único em `data/blog.js` alimenta listagem e relacionados
 
 ### Produtos
 - ✅ Sync de campos completos: SKU, nome, descrição, preço, preço promocional, estoque, unidade, GTIN, NCM, dimensões, peso, marca, imagens
@@ -281,16 +294,22 @@ vmclick/
 ├─ index.html · produtos.html · categoria.html · produto.html
 ├─ carrinho.html · finalizar.html · servicos.html
 ├─ quem-somos.html · contato.html · politica.html
+├─ blog.html · blog-dimensionar-disjuntor-cabo.html
+├─ blog-temperatura-cor-led.html · blog-checklist-eletrica-obra.html
 │
 ├─ data/
 │  ├─ produtos.js       ← gerado por enrich (window.VM_PRODUTOS + VM_CATEGORIAS)
-│  └─ marcas.js         ← gerado por enrich (window.VM_MARCAS)
+│  ├─ marcas.js         ← gerado por enrich/derivar-marcas (window.VM_MARCAS)
+│  ├─ curadoria.js      ← EDITÁVEL: destaques e ofertas da home (window.VM_CURADORIA)
+│  └─ blog.js           ← EDITÁVEL: índice dos posts (window.VM_POSTS)
 │
 ├─ scripts/
 │  ├─ get-token.js           ← OAuth2 flow
 │  ├─ fetch-categorias.js    ← baixa árvore de categorias
 │  ├─ enrich-produtos.js     ← baixa detalhes, aplica regras, gera data/*.js
 │  ├─ regras-catalogo.js     ← regras de sub-categorização (editável)
+│  ├─ regras-marcas.js       ← regras de detecção de marca por nome (editável)
+│  ├─ derivar-marcas.js      ← preenche marca e regenera data/marcas.js (sem API)
 │  ├─ sync-tiny.js           ← sync leve legado (só lista)
 │  ├─ categorias.json        ← gerado (top-level + mapping)
 │  ├─ categorias-olist.json  ← árvore bruta (ignorado no git)
@@ -341,6 +360,30 @@ npm run enrich-produtos:cache
 ```
 
 Instantâneo — usa cache, não bate na API.
+
+### Ajustar marcas detectadas
+
+O Olist devolve `marca` vazia na maior parte do catálogo. As regras de detecção
+por nome ficam em `scripts/regras-marcas.js`. Depois de editar:
+
+```powershell
+npm run derivar-marcas:dry     # relatório: quantos casaram, top 20, sem gravar
+npm run derivar-marcas         # aplica; só preenche quem está vazio
+node scripts/derivar-marcas.js --force   # re-deriva tudo (use após mexer nas regras)
+```
+
+Marca vinda do ERP sempre vence a derivação. O mesmo fallback roda dentro do
+`enrich-produtos.js`, então um sync novo já nasce com marca preenchida.
+
+### Trocar destaques e ofertas da home
+
+Editar `data/curadoria.js` (SKUs e preços de referência) e recarregar a página.
+Nenhum script, nenhum build — o arquivo não é gerado nem sobrescrito pelo sync.
+
+### Publicar um post no blog
+
+1. Duplicar um `blog-*.html` e escrever o conteúdo
+2. Acrescentar a entrada no topo de `data/blog.js`
 
 ### Ajustar cores/nomes de marcas
 

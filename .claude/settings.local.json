@@ -3,7 +3,12 @@
     "allow": [
       "WebFetch(domain:vmclick.com.br)",
       "PowerShell($d=\"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Administrador-Documents-Projetos-vmclick\\\\5768b39b-8ec8-4fd4-8ed8-1440dfb7870c\\\\scratchpad\"; New-Item -ItemType Directory -Force $d | Out-Null; Invoke-WebRequest \"https://vmclick.com.br/wp-content/uploads/2022/08/LOGO-VMCLICK-2022.png\" -OutFile \"$d\\\\logo.png\"; Invoke-WebRequest \"https://vmclick.com.br/wp-content/uploads/2022/08/LOGO-VMCLICK-vert-2022.png\" -OutFile \"$d\\\\logo-vert.png\"; Get-ChildItem $d | Select-Object Name,Length; Get-ChildItem \"C:\\\\Users\\\\Administrador\\\\Documents\\\\Projetos\\\\vmclick\" -Force | Select-Object Name)",
-      "PowerShell(Add-Type -AssemblyName System.Drawing; $b=[System.Drawing.Bitmap]::FromFile\\(\"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Administrador-Documents-Projetos-vmclick\\\\5768b39b-8ec8-4fd4-8ed8-1440dfb7870c\\\\scratchpad\\\\logo.png\"\\); $counts=@{}; for\\($x=0;$x -lt $b.Width;$x+=3\\){for\\($y=0;$y -lt $b.Height;$y+=3\\){$p=$b.GetPixel\\($x,$y\\); if\\($p.A -lt 200\\){continue}; $k=\"{0:X2}{1:X2}{2:X2}\" -f $p.R,$p.G,$p.B; $counts[$k]=[int]$counts[$k]+1}}; $counts.GetEnumerator\\(\\) | Sort-Object Value -Descending | Select-Object -First 8 | Format-Table -AutoSize; $b.Dispose\\(\\))"
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $b=[System.Drawing.Bitmap]::FromFile\\(\"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Administrador-Documents-Projetos-vmclick\\\\5768b39b-8ec8-4fd4-8ed8-1440dfb7870c\\\\scratchpad\\\\logo.png\"\\); $counts=@{}; for\\($x=0;$x -lt $b.Width;$x+=3\\){for\\($y=0;$y -lt $b.Height;$y+=3\\){$p=$b.GetPixel\\($x,$y\\); if\\($p.A -lt 200\\){continue}; $k=\"{0:X2}{1:X2}{2:X2}\" -f $p.R,$p.G,$p.B; $counts[$k]=[int]$counts[$k]+1}}; $counts.GetEnumerator\\(\\) | Sort-Object Value -Descending | Select-Object -First 8 | Format-Table -AutoSize; $b.Dispose\\(\\))",
+      "Bash(node *)",
+      "WebFetch(domain:api-docs.erp.olist.com)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }

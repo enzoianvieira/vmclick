@@ -326,6 +326,23 @@
 .pdp__thumbs span { font-size: 11px; color: var(--text-muted); font-weight: var(--fw-medium); }
 .pdp__thumbs button[aria-current="true"] span { color: var(--teal-800); }
 
+/* Galeria com fotos reais (PDP) */
+.pdp__gallery--fotos .pdp__main { background: #fff; }
+.pdp__foto {
+  width: 100%; height: 100%; object-fit: contain; padding: var(--sp-6);
+  transition: transform var(--dur-slow) var(--ease);
+}
+.pdp__gallery--fotos .pdp__main:hover .pdp__foto { transform: scale(1.03); }
+.pdp__gallery--fotos .pdp__thumbs { flex-wrap: wrap; }
+.pdp__thumb-foto {
+  width: 72px; height: 72px; padding: 4px !important; background: #fff !important;
+}
+.pdp__thumb-foto img { width: 100%; height: 100%; object-fit: contain; display: block; }
+@media (max-width: 599px) {
+  .pdp__thumb-foto { width: 56px; height: 56px; }
+  .pdp__foto { padding: var(--sp-3); }
+}
+
 /* ==========================================================================
    AVALIAÇÕES
    ========================================================================== */

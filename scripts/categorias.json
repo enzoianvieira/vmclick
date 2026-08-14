@@ -1,0 +1,82 @@
+{
+  "_instrucoes": [
+    "Gerado automaticamente por fetch-categorias.js.",
+    "\"slugs\" é a lista de categorias do site (uma por top-level do Olist).",
+    "\"mapping\" traduz cada categoria Olist (por ID) pro slug da sua top-level ancestral.",
+    "Você pode editar \"nome\", \"curto\", \"desc\" e \"icone\" dos slugs à vontade — enrich preserva."
+  ],
+  "slugs": [
+    {
+      "slug": "eletrica",
+      "nome": "Elétrica",
+      "curto": "Elétrica",
+      "icone": "p-disjuntor",
+      "desc": "Produtos da categoria Elétrica disponíveis em estoque.",
+      "olistId": 908763929
+    },
+    {
+      "slug": "vestuarios",
+      "nome": "Vestuários",
+      "curto": "Vestuários",
+      "icone": "p-caixa",
+      "desc": "Produtos da categoria Vestuários disponíveis em estoque.",
+      "olistId": 910789627
+    },
+    {
+      "slug": "utilidades",
+      "nome": "Utilidades",
+      "curto": "Utilidades",
+      "icone": "p-alicate",
+      "desc": "Produtos da categoria Utilidades disponíveis em estoque.",
+      "olistId": 915730896
+    },
+    {
+      "slug": "ferramentas",
+      "nome": "Ferramentas",
+      "curto": "Ferramentas",
+      "icone": "p-alicate",
+      "desc": "Produtos da categoria Ferramentas disponíveis em estoque.",
+      "olistId": 916079451
+    }
+  ],
+  "mapping": {
+    "908763929": "eletrica",
+    "908788001": "eletrica",
+    "908788002": "eletrica",
+    "908788529": "eletrica",
+    "908788530": "eletrica",
+    "910789627": "vestuarios",
+    "910789628": "vestuarios",
+    "915172485": "eletrica",
+    "915172486": "eletrica",
+    "915172487": "eletrica",
+    "915172488": "eletrica",
+    "915730896": "utilidades",
+    "915730897": "utilidades",
+    "915730898": "utilidades",
+    "915730899": "utilidades",
+    "915730900": "utilidades",
+    "915730901": "utilidades",
+    "915730902": "utilidades",
+    "915730903": "utilidades",
+    "915730904": "utilidades",
+    "915753578": "utilidades",
+    "915753579": "utilidades",
+    "915753580": "utilidades",
+    "915753581": "utilidades",
+    "915753582": "utilidades",
+    "916079451": "ferramentas",
+    "916079845": "ferramentas",
+    "916079846": "ferramentas",
+    "916079847": "ferramentas",
+    "916129432": "eletrica",
+    "917445884": "eletrica",
+    "917445885": "eletrica",
+    "917619404": "utilidades",
+    "917619405": "utilidades",
+    "917619406": "utilidades",
+    "917775838": "utilidades",
+    "917776141": "utilidades",
+    "917776142": "utilidades"
+  }
+}

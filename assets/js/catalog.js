@@ -7,7 +7,7 @@
   'use strict';
 
   var VM = window.VM;
-  var POR_PAGINA = 12;
+  var POR_PAGINA = 30;
 
   /* ======================================================================
      1. CARD DE PRODUTO
@@ -24,12 +24,17 @@
     if (esgotado) flags += '<span class="badge badge--bad">Esgotado</span>';
     else if (p.estoque <= 20) flags += '<span class="badge badge--warn">Últimas ' + p.estoque + '</span>';
 
+    var img = (p.imagens && p.imagens.length) ? p.imagens[0] : '';
+    var thumb = img
+      ? '<img class="product__img" src="' + img + '" alt="' + (p.nome || '').replace(/"/g, '&quot;') + '" loading="lazy" decoding="async" onerror="this.remove()">'
+      : VM.ico(p.icone);
+
     return '' +
     '<li class="product' + (esgotado ? ' is-out' : '') + '" data-produto="' + p.slug + '">' +
       '<div class="product__thumb">' +
         '<div class="product__flags">' + flags + '</div>' +
         '<button class="product__fav" type="button" aria-label="Favoritar ' + p.nome + '">' + VM.icon('coracao') + '</button>' +
-        VM.ico(p.icone) +
+        thumb +
       '</div>' +
       '<div class="product__body">' +
         '<span class="product__cat">' + (cat ? cat.curto : '') + '</span>' +
@@ -107,12 +112,23 @@
 
       var ord = estado.ord;
       r.sort(function (a, b) {
+        /* regra global: esgotados sempre por último, independente da ordenação */
+        var aStk = (a.estoque > 0) ? 1 : 0;
+        var bStk = (b.estoque > 0) ? 1 : 0;
+        if (aStk !== bStk) return bStk - aStk;
+
         if (ord === 'menor') return a.preco - b.preco;
         if (ord === 'maior') return b.preco - a.preco;
         if (ord === 'nome')  return a.nome.localeCompare(b.nome, 'pt-BR');
         if (ord === 'nota')  return b.nota - a.nota || b.avaliacoes - a.avaliacoes;
-        /* relevância: destaque > estoque > avaliações */
-        return (b.destaque - a.destaque) || ((b.estoque > 0) - (a.estoque > 0)) || (b.avaliacoes - a.avaliacoes);
+
+        /* relevância: com imagem > destaque > avaliações > alfabético */
+        var aImg = (a.imagens && a.imagens.length > 0) ? 1 : 0;
+        var bImg = (b.imagens && b.imagens.length > 0) ? 1 : 0;
+        return (bImg - aImg)
+            || ((b.destaque ? 1 : 0) - (a.destaque ? 1 : 0))
+            || (b.avaliacoes - a.avaliacoes)
+            || a.nome.localeCompare(b.nome, 'pt-BR');
       });
       return r;
     }
@@ -189,20 +205,68 @@
       if (!wrap) return;
       if (paginas <= 1) { wrap.innerHTML = ''; return; }
 
-      var html = '<button type="button" data-pag="' + (estado.pag - 1) + '"' + (estado.pag === 1 ? ' disabled' : '') + '>Anterior</button>';
-      for (var i = 1; i <= paginas; i++) {
-        html += '<button type="button" data-pag="' + i + '"' + (i === estado.pag ? ' aria-current="true"' : '') + '>' + i + '</button>';
+      var atual = estado.pag;
+      var itens = paginacaoCondensada(atual, paginas);
+
+      var html = '<button type="button" data-pag="' + (atual - 1) + '"' + (atual === 1 ? ' disabled' : '') + '>Anterior</button>';
+      for (var i = 0; i < itens.length; i++) {
+        var it = itens[i];
+        if (it === '...') {
+          html += '<span class="pag-ellipsis" aria-hidden="true">…</span>';
+        } else {
+          html += '<button type="button" data-pag="' + it + '"' + (it === atual ? ' aria-current="true"' : '') + '>' + it + '</button>';
+        }
       }
-      html += '<button type="button" data-pag="' + (estado.pag + 1) + '"' + (estado.pag === paginas ? ' disabled' : '') + '>Próxima</button>';
+      html += '<button type="button" data-pag="' + (atual + 1) + '"' + (atual === paginas ? ' disabled' : '') + '>Próxima</button>';
+
+      if (paginas > 10) {
+        html += '<label class="pag-jump"><span>Ir p/</span>' +
+          '<input type="number" min="1" max="' + paginas + '" value="' + atual + '" id="pag-input" inputmode="numeric" aria-label="Ir para página">' +
+          '<span>de ' + paginas + '</span></label>';
+      }
+
       wrap.innerHTML = html;
 
       VM.qsa('[data-pag]', wrap).forEach(function (b) {
         b.addEventListener('click', function () {
-          estado.pag = parseInt(b.getAttribute('data-pag'), 10);
-          render();
-          window.scrollTo({ top: VM.qs('#grid').offsetTop - 140, behavior: 'smooth' });
+          irParaPagina(parseInt(b.getAttribute('data-pag'), 10), paginas);
         });
       });
+
+      var input = VM.qs('#pag-input', wrap);
+      if (input) {
+        input.addEventListener('change', function () {
+          irParaPagina(parseInt(input.value, 10), paginas);
+        });
+        input.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); irParaPagina(parseInt(input.value, 10), paginas); }
+        });
+      }
+    }
+
+    function paginacaoCondensada(atual, total) {
+      var VIZINHOS = 1;
+      var BORDA = 1;
+      var minPag = Math.max(BORDA + 1, atual - VIZINHOS);
+      var maxPag = Math.min(total - BORDA, atual + VIZINHOS);
+      var out = [];
+
+      for (var i = 1; i <= BORDA; i++) out.push(i);
+      if (minPag > BORDA + 1) out.push('...');
+      for (var j = minPag; j <= maxPag; j++) out.push(j);
+      if (maxPag < total - BORDA) out.push('...');
+      for (var k = total - BORDA + 1; k <= total; k++) if (k > BORDA) out.push(k);
+
+      return out;
+    }
+
+    function irParaPagina(n, total) {
+      if (!Number.isFinite(n)) return;
+      n = Math.max(1, Math.min(total, n));
+      if (n === estado.pag) return;
+      estado.pag = n;
+      render();
+      window.scrollTo({ top: VM.qs('#grid').offsetTop - 140, behavior: 'smooth' });
     }
 
     /* ------------------------------------------------------ painel lateral */
@@ -395,42 +459,69 @@
       return '<div class="pdp__ficha-row"><span>' + k + '</span><b>' + p.specs[k] + '</b></div>';
     }).join('');
 
-    raiz.innerHTML = '' +
-    '<div class="pdp__gallery">' +
-      '<div class="pdp__main" id="pdp-main">' +
-        '<div class="product__flags">' +
-          (desconto ? '<span class="badge badge--promo">-' + desconto + '%</span>' : '') +
-          (p.novo ? '<span class="badge badge--novo">Novidade</span>' : '') +
-        '</div>' +
+    var temImagens = p.imagens && p.imagens.length > 0;
 
-        '<div class="pdp__view" data-vista="produto">' + VM.ico(p.icone) + '</div>' +
-
-        '<div class="pdp__view" data-vista="escala" hidden>' +
-          '<div class="pdp__cota">' +
-            '<span class="pdp__cota-eixo pdp__cota-eixo--h" aria-hidden="true"></span>' +
-            '<span class="pdp__cota-eixo pdp__cota-eixo--v" aria-hidden="true"></span>' +
-            VM.ico(p.icone) +
+    var galeriaHTML;
+    if (temImagens) {
+      var nomeEsc = (p.nome || '').replace(/"/g, '&quot;');
+      galeriaHTML =
+        '<div class="pdp__gallery pdp__gallery--fotos">' +
+          '<div class="pdp__main" id="pdp-main">' +
+            '<div class="product__flags">' +
+              (desconto ? '<span class="badge badge--promo">-' + desconto + '%</span>' : '') +
+              (p.novo ? '<span class="badge badge--novo">Novidade</span>' : '') +
+            '</div>' +
+            '<img class="pdp__foto" id="pdp-foto" src="' + p.imagens[0] + '" alt="' + nomeEsc + '" loading="eager" decoding="async" onerror="this.style.display=\'none\'">' +
           '</div>' +
-          '<span class="pdp__cota-label">' + chavePrincipal + ': <b>' + p.specs[chavePrincipal] + '</b></span>' +
-        '</div>' +
+          '<div class="pdp__thumbs" role="tablist" aria-label="Fotos do produto">' +
+            p.imagens.map(function (url, i) {
+              return '<button type="button" role="tab" class="pdp__thumb-foto" data-foto-idx="' + i + '" ' +
+                'aria-current="' + (i === 0 ? 'true' : 'false') + '" aria-label="Foto ' + (i + 1) + '">' +
+                '<img src="' + url + '" alt="" loading="lazy" onerror="this.parentElement.remove()">' +
+              '</button>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+    } else {
+      galeriaHTML =
+        '<div class="pdp__gallery">' +
+          '<div class="pdp__main" id="pdp-main">' +
+            '<div class="product__flags">' +
+              (desconto ? '<span class="badge badge--promo">-' + desconto + '%</span>' : '') +
+              (p.novo ? '<span class="badge badge--novo">Novidade</span>' : '') +
+            '</div>' +
 
-        '<div class="pdp__view pdp__view--ficha" data-vista="ficha" hidden>' +
-          '<span class="pdp__ficha-t">Resumo técnico</span>' +
-          fichaResumo +
-          '<span class="pdp__ficha-sku">cód. ' + p.sku + ' · ' + p.marca + '</span>' +
-        '</div>' +
-      '</div>' +
+            '<div class="pdp__view" data-vista="produto">' + VM.ico(p.icone) + '</div>' +
 
-      '<div class="pdp__thumbs" role="tablist" aria-label="Vistas do produto">' +
-        vistas.map(function (v, i) {
-          return '<button type="button" role="tab" data-vista-btn="' + v.id + '" ' +
-            'aria-current="' + (i === 0 ? 'true' : 'false') + '" aria-label="Ver ' + v.rotulo + '">' +
-            VM.ico(v.ico) + '<span>' + v.rotulo + '</span></button>';
-        }).join('') +
-      '</div>' +
+            '<div class="pdp__view" data-vista="escala" hidden>' +
+              '<div class="pdp__cota">' +
+                '<span class="pdp__cota-eixo pdp__cota-eixo--h" aria-hidden="true"></span>' +
+                '<span class="pdp__cota-eixo pdp__cota-eixo--v" aria-hidden="true"></span>' +
+                VM.ico(p.icone) +
+              '</div>' +
+              '<span class="pdp__cota-label">' + chavePrincipal + ': <b>' + (p.specs[chavePrincipal] || '-') + '</b></span>' +
+            '</div>' +
 
-      '<p class="mono subtle" style="text-align:center">Ilustrações técnicas. As fotos reais dos produtos passam a vir do Olist Tiny na integração.</p>' +
-    '</div>' +
+            '<div class="pdp__view pdp__view--ficha" data-vista="ficha" hidden>' +
+              '<span class="pdp__ficha-t">Resumo técnico</span>' +
+              fichaResumo +
+              '<span class="pdp__ficha-sku">cód. ' + p.sku + ' · ' + p.marca + '</span>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="pdp__thumbs" role="tablist" aria-label="Vistas do produto">' +
+            vistas.map(function (v, i) {
+              return '<button type="button" role="tab" data-vista-btn="' + v.id + '" ' +
+                'aria-current="' + (i === 0 ? 'true' : 'false') + '" aria-label="Ver ' + v.rotulo + '">' +
+                VM.ico(v.ico) + '<span>' + v.rotulo + '</span></button>';
+            }).join('') +
+          '</div>' +
+
+          '<p class="mono subtle" style="text-align:center">Sem foto real cadastrada no ERP.</p>' +
+        '</div>';
+    }
+
+    raiz.innerHTML = '' + galeriaHTML +
 
     '<div class="pdp__info">' +
       '<span class="pdp__brand">' + p.marca + '</span>' +
@@ -510,7 +601,7 @@
       qtd.value = Math.min(parseInt(qtd.max, 10), (parseInt(qtd.value, 10) || 1) + 1);
     });
 
-    /* troca de vista na galeria */
+    /* troca de vista na galeria (fallback SVG) */
     VM.qsa('[data-vista-btn]').forEach(function (b) {
       b.addEventListener('click', function () {
         var id = b.getAttribute('data-vista-btn');
@@ -519,6 +610,20 @@
         });
         VM.qsa('.pdp__view').forEach(function (v) {
           v.hidden = v.getAttribute('data-vista') !== id;
+        });
+      });
+    });
+
+    /* troca de foto na galeria (imagens reais) */
+    VM.qsa('[data-foto-idx]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var idx = parseInt(b.getAttribute('data-foto-idx'), 10);
+        var url = p.imagens[idx];
+        if (!url) return;
+        var main = VM.qs('#pdp-foto');
+        if (main) { main.src = url; main.alt = p.nome; }
+        VM.qsa('[data-foto-idx]').forEach(function (x) {
+          x.setAttribute('aria-current', String(x === b));
         });
       });
     });

@@ -1,0 +1,20 @@
+{
+  "name": "vmclick",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VM Click - vitrine estática + sync com Olist Tiny",
+  "scripts": {
+    "dev": "npx http-server -p 4321 -c-1 .",
+    "get-token": "node scripts/get-token.js",
+    "get-token:refresh": "node scripts/get-token.js --refresh",
+    "sync-tiny": "node scripts/sync-tiny.js",
+    "sync-tiny:dry": "node scripts/sync-tiny.js --dry-run",
+    "fetch-categorias": "node scripts/fetch-categorias.js",
+    "enrich-produtos": "node scripts/enrich-produtos.js",
+    "enrich-produtos:dry": "node scripts/enrich-produtos.js --dry-run",
+    "enrich-produtos:cache": "node scripts/enrich-produtos.js --cache-only"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

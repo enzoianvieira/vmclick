@@ -188,6 +188,7 @@
 <footer class="site-footer" id="site-footer"></footer>
 
 <script src="data/produtos.js"></script>
+<script src="data/marcas.js" onerror="window.VM_MARCAS=[]"></script>
 <script src="assets/js/sprite.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -216,26 +217,11 @@ document.addEventListener('vm:ready', function () {
   }).join('') +
   '<li><a href="servicos.html">' + VM.ico('p-projeto') + 'Projetos e serviços' + VM.icon('seta', 'arrow') + '</a></li>';
 
-  /* esteira de marcas - cores são aproximações da identidade de cada fabricante,
-     substituíveis pelos logos oficiais em SVG na versão final */
-  var MARCAS = [
-    { n: 'Tigre',       c: '#0B4DA2' },
-    { n: 'Schneider',   c: '#2E9E45' },
-    { n: 'Tramontina',  c: '#C8102E' },
-    { n: 'Philips',     c: '#0066B3' },
-    { n: 'Amanco',      c: '#D62027' },
-    { n: 'Steck',       c: '#E2661A' },
-    { n: 'Suvinil',     c: '#B07A00' },
-    { n: '3M',          c: '#D50032' },
-    { n: 'Siemens',     c: '#007D8A' },
-    { n: 'Docol',       c: '#2B2B2B' },
-    { n: 'Osram',       c: '#E06A00' },
-    { n: 'Vonder',      c: '#0067B1' },
-    { n: 'Krona',       c: '#1B7F3B' },
-    { n: 'Gedore',      c: '#B3261E' },
-    { n: 'Deca',        c: '#1F4E79' },
-    { n: 'Quartzolit',  c: '#C2410C' }
-  ];
+  /* esteira de marcas - vem de data/marcas.js (gerado pelo enrich a partir do Olist).
+     Fallback: lista mínima se arquivo não existir. */
+  var MARCAS = (window.VM_MARCAS && window.VM_MARCAS.length)
+    ? window.VM_MARCAS
+    : [{ n: 'Sem marcas cadastradas', c: '#666' }];
 
   function grupoMarcas(oculto) {
     return '<ul class="marquee__group"' + (oculto ? ' aria-hidden="true"' : '') + '>' +

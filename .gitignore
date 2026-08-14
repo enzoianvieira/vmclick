@@ -1,0 +1,26 @@
+# Segredos
+.env
+.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sync Tiny
+scripts/.cache/
+scripts/categorias-olist.json
+data/produtos.js.bak
+sync-tiny.log
+
+# Editores / SO
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Screenshots enviados pelo usuário na conversa
+image.png
+image*.png

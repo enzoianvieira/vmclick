@@ -16,7 +16,8 @@
     "derivar-marcas": "node scripts/derivar-marcas.js",
     "derivar-marcas:dry": "node scripts/derivar-marcas.js --dry-run",
     "otimizar-imagens": "node scripts/otimizar-imagens.js",
-    "otimizar-imagens:force": "node scripts/otimizar-imagens.js --force"
+    "otimizar-imagens:force": "node scripts/otimizar-imagens.js --force",
+    "sync-site": "node scripts/enrich-produtos.js"
   },
   "engines": {
     "node": ">=18"

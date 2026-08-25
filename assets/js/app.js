@@ -39,6 +39,18 @@
 
   VM.produtos = function () { return window.VM_PRODUTOS || []; };
   VM.categorias = function () { return window.VM_CATEGORIAS || []; };
+
+  /* Quantos produtos existem em cada categoria. */
+  VM.contarPorCategoria = function (slug) {
+    return VM.produtos().filter(function (p) { return p.cat === slug; }).length;
+  };
+
+  /* Categorias que de fato têm produto. O catálogo do site é um recorte do
+     Olist, então categoria vazia não deve aparecer no menu, no rodapé nem na
+     home: leva o cliente para uma vitrine sem nada. */
+  VM.categoriasAtivas = function () {
+    return VM.categorias().filter(function (c) { return VM.contarPorCategoria(c.slug) > 0; });
+  };
   VM.categoria = function (slug) {
     return VM.categorias().filter(function (c) { return c.slug === slug; })[0] || null;
   };
@@ -161,7 +173,7 @@
      4. HEADER
      ====================================================================== */
   function megaHTML() {
-    var cats = VM.categorias().map(function (c) {
+    var cats = VM.categoriasAtivas().map(function (c) {
       return '<a class="mega__item" href="categoria.html?cat=' + c.slug + '">' +
                VM.ico(c.icone) +
                '<span><span class="mega__t">' + c.nome + '</span>' +
@@ -184,7 +196,7 @@
 
     var mobileLinks = NAV.map(function (n) {
       return '<a href="' + n.h + '">' + n.t + '</a>';
-    }).join('') + VM.categorias().map(function (c) {
+    }).join('') + VM.categoriasAtivas().map(function (c) {
       return '<a href="categoria.html?cat=' + c.slug + '">' + VM.ico(c.icone) + c.nome + '</a>';
     }).join('');
 
@@ -239,7 +251,7 @@
       .filter(Boolean);
 
     /* Slug removido do catálogo não pode deixar buraco: completa com o que houver. */
-    VM.categorias().forEach(function (c) {
+    VM.categoriasAtivas().forEach(function (c) {
       if (escolhidas.length < 4 && escolhidas.indexOf(c) === -1) escolhidas.push(c);
     });
 

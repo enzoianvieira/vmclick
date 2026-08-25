@@ -45,6 +45,25 @@ const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const FORCE = args.includes('--force');
 const CACHE_ONLY = args.includes('--cache-only');
+const SKUS_PATH = path.join(__dirname, 'skus-site.txt');
+
+/* -------- Lista curada de SKUs --------
+   Se scripts/skus-site.txt existir com ao menos um SKU, o sync traz SOMENTE
+   esses produtos. Serve para o site publicar um recorte do Olist em vez do
+   catalogo inteiro. Apagar o arquivo volta ao comportamento de catalogo cheio.
+   Nada aqui escreve no Olist: o script inteiro so faz GET.                  */
+function loadSkusDesejados() {
+  if (!fs.existsSync(SKUS_PATH)) return null;
+  const skus = fs
+    .readFileSync(SKUS_PATH, 'utf8')
+    .split(/\r?\n/)
+    .map((l) => l.split('#')[0].trim())
+    .filter(Boolean);
+  return skus.length ? skus : null;
+}
+
+const SKUS_DESEJADOS = loadSkusDesejados();
+const SKUS_SET = SKUS_DESEJADOS ? new Set(SKUS_DESEJADOS.map((x) => x.toUpperCase())) : null;
 
 // -------- .env loader --------
 function loadEnv() {
@@ -209,6 +228,7 @@ async function apiGet(pathAndQuery, attempt = 1) {
 // -------- Listagem de IDs --------
 async function listarTodosIds() {
   const ids = [];
+  const encontrados = new Map();
   let offset = 0;
   let total = null;
 
@@ -220,13 +240,34 @@ async function listarTodosIds() {
     const pag = (json && json.paginacao) || {};
     if (typeof pag.total === 'number') total = pag.total;
 
-    for (const p of itens) if (p && p.id) ids.push(p.id);
+    for (const p of itens) {
+      if (!p || !p.id) continue;
+      /* Com lista curada, filtra ja na listagem: o endpoint devolve o sku,
+         entao nao e preciso baixar o detalhe de milhares de itens para
+         descobrir quais interessam. */
+      if (SKUS_SET) {
+        const sku = String(p.sku || '').toUpperCase();
+        if (!SKUS_SET.has(sku)) continue;
+        encontrados.set(sku, p.id);
+      }
+      ids.push(p.id);
+    }
 
     if (itens.length < PAGE_SIZE) break;
     if (total !== null && ids.length >= total) break;
     offset += PAGE_SIZE;
   }
   process.stdout.write('\n');
+  if (SKUS_SET) {
+    const faltando = SKUS_DESEJADOS.filter((sku) => !encontrados.has(sku.toUpperCase()));
+    console.log(`  lista curada: ${ids.length} de ${SKUS_DESEJADOS.length} SKUs encontrados`);
+    if (faltando.length) {
+      console.warn(`\n  ! nao encontrados no Olist com situacao=${SITUACAO}:`);
+      faltando.forEach((sku) => console.warn('      ' + sku));
+      console.warn('    Confira o codigo no Olist, ou rode com TINY_SITUACAO= (vazio) para incluir inativos.\n');
+    }
+  }
+
   return ids;
 }
 

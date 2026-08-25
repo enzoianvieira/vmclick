@@ -77,3 +77,27 @@ Convenções de marcação (para o porte ao WordPress ser troca de template):
 5. **Aviso de demonstração:** toda tela de compra exibe faixa informando que nenhum pedido é processado.
 6. **Idioma:** só pt-BR. Sem dark mode no site público (o styleguide tem, o site não).
 
+
+## 5. Vitrine curada (25/08/2026)
+
+O site deixou de espelhar o catálogo inteiro do Olist e passou a publicar um **recorte curado**.
+
+| Item | Estado |
+|---|---|
+| Produtos removidos do site | 2.401 |
+| Produtos no site agora | 0, até a lista curada ser sincronizada |
+| Excluídos no Olist | **nenhum** — todos os scripts do projeto só fazem `GET` |
+| Restaurar catálogo anterior | `git show HEAD:data/produtos.js > data/produtos.js` |
+
+**Como a curadoria funciona:** `scripts/skus-site.txt` lista os SKUs que vão para o site,
+um por linha, com comentário livre após `#`. Existindo a lista, `npm run sync-site`
+traz somente esses produtos do Olist. Apagar o arquivo volta a sincronizar tudo.
+
+O filtro acontece já na listagem (`GET /produtos` devolve o `sku`), então
+sincronizar 19 itens custa uma varredura de listagem mais 19 chamadas de detalhe,
+em vez de 2.401.
+
+**Categoria vazia não aparece.** Como o catálogo virou um recorte, `VM.categoriasAtivas()`
+esconde do menu, do rodapé, da home e da página de categoria toda categoria sem produto:
+categoria vazia leva o cliente para uma vitrine sem nada. A faixa de marcas segue a mesma
+regra, porque as marcas são derivadas dos produtos.

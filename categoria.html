@@ -109,7 +109,7 @@ document.addEventListener('vm:ready', function () {
   VM.initVitrine({ cat: slug });
 
   /* outras categorias */
-  document.getElementById('outras').innerHTML = VM.categorias()
+  document.getElementById('outras').innerHTML = VM.categoriasAtivas()
     .filter(function (c) { return c.slug !== slug; })
     .map(function (c) {
       var n = VM.produtos().filter(function (p) { return p.cat === c.slug; }).length;

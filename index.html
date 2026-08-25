@@ -282,7 +282,7 @@ document.addEventListener('vm:ready', function () {
     .filter(Boolean);
 
   /* Se algum slug sair do catálogo no próximo sync, completa com o que existir. */
-  VM.categorias().forEach(function (c) {
+  VM.categoriasAtivas().forEach(function (c) {
     if (linhas.length < 5 && linhas.indexOf(c) === -1) linhas.push(c);
   });
 
@@ -295,9 +295,7 @@ document.addEventListener('vm:ready', function () {
 
   /* esteira de marcas - vem de data/marcas.js (gerado pelo enrich a partir do Olist).
      Fallback: lista mínima se arquivo não existir. */
-  var MARCAS = (window.VM_MARCAS && window.VM_MARCAS.length)
-    ? window.VM_MARCAS
-    : [{ n: 'Sem marcas cadastradas', c: '#666' }];
+  var MARCAS = (window.VM_MARCAS && window.VM_MARCAS.length) ? window.VM_MARCAS : [];
 
   function grupoMarcas(oculto) {
     return '<ul class="marquee__group"' + (oculto ? ' aria-hidden="true"' : '') + '>' +
@@ -308,8 +306,15 @@ document.addEventListener('vm:ready', function () {
       }).join('') + '</ul>';
   }
 
-  document.getElementById('marcas').innerHTML =
-    '<div class="marquee__track">' + grupoMarcas(false) + grupoMarcas(true) + '</div>';
+  /* As marcas são derivadas do catálogo. Sem catálogo, some com a faixa
+     inteira em vez de anunciar marca nenhuma. */
+  var faixaMarcas = document.getElementById('marcas');
+  if (MARCAS.length) {
+    faixaMarcas.innerHTML =
+      '<div class="marquee__track">' + grupoMarcas(false) + grupoMarcas(true) + '</div>';
+  } else {
+    faixaMarcas.closest('section').hidden = true;
+  }
 
   VM.initCarrossel('#banners');
 

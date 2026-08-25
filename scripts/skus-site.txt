@@ -1,0 +1,33 @@
+# ============================================================================
+# VM Click - SKUs que vão para o site
+# ----------------------------------------------------------------------------
+# Quando este arquivo existe e tem pelo menos um SKU, `npm run enrich-produtos`
+# traz SOMENTE estes produtos do Olist. Apague o arquivo (ou esvazie a lista)
+# para voltar a sincronizar o catálogo inteiro.
+#
+# Um SKU por linha. Linha em branco e linha começando com # são ignoradas.
+# O SKU é comparado sem diferenciar maiúsculas de minúsculas.
+# ============================================================================
+
+# ---------------------------------------------------------------- Iluminação
+LAMBLB50W65KMDX      # Lâmpada bulbo alta potência bivolt 50W 6500K E27 Mundilux 100506
+LAMBLB9W65KMDX       # Lâmpada bulbo bivolt 9W 6500K E27 Mundilux 100096
+LAMBLB15W65KMDX      # Lâmpada bulbo bivolt 15W 6500K E27 Mundilux 100156
+PNLQDSB18W6KEMP      # Painel LED Empalux alu qdo sobrepor 18W 6000K 20x20cm 1244lm
+PNLQDEM18W6KEMP      # Painel LED Empalux alu qdo embutir 18W 6000K 21x21cm 1244lm
+PNALQDEM24W30K29     # Painel LED Empalux alu qdo embutir 24W 3000K 29x29cm
+PNLED80423004        # Painel LED embutir qd Blumenau 12W 3000K alu 170mm 80423004 biv
+PNLED80426004        # Painel LED embutir qd Blumenau 12W 6500K alu 170mm 80426004 biv
+LDS7899737911160     # Lâmpada LED dicroica GU10 MR16 Stella 6W 450lm 3000K 36 STH8535/30
+
+# ------------------------------------------------------- Acabamentos elétricos
+CJTM20A4X2BCMLZ      # Miluz conjunto 4x2 1 tomada NBR 20A branco S3B60350 Schneider
+CJ1TM101TS4X2BCMLZ   # Miluz conjunto 4x2 1 interruptor TS com 1 tomada NBR 10A S3B69030 Schneider
+CJINT1TS4X2BCMLZ     # Miluz conjunto 4x2 interruptor 1TS branco S3B62010 Schneider
+SUP4X2MLZ            # Miluz suporte 4x2 3 postos S3B76120 Schneider
+MODTOM10ABCMLZ       # Miluz módulo tomada NBR 10A branco S3B70340 Schneider
+MODTOM20ABCMLZ       # Miluz módulo tomada NBR 20A branco S3B70350 Schneider
+PLC4X21PBRMLZ        # Miluz placa 4x2 1 mód branca S3B77110 Schneider
+CJ4X2PL2BCESUPMLZ    # Miluz conjunto 4x2 placa 2 mód branca e suporte S3B57220 Schneider
+CJ4X2PL1BCESUPMLZ    # Miluz conjunto 4x2 placa 1 mód branca e suporte S3B57210 Schneider
+CJ4X2PL3BCESUPMLZ    # Miluz conjunto 4x2 placa 3 mód branca e suporte S3B57230 Schneider

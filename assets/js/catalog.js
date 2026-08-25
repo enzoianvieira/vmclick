@@ -379,7 +379,7 @@
 
       if (!catFixa) {
         html += '<div class="filter-group"><span class="filter-group__title">Categoria</span>' +
-          VM.categorias().map(function (c) {
+          VM.categoriasAtivas().map(function (c) {
             var n = base.filter(function (p) { return p.cat === c.slug; }).length;
             return '<label class="filter-opt"><input type="checkbox" data-f="cat" value="' + c.slug + '">' +
               c.nome + '<span class="filter-opt__n">' + n + '</span></label>';
@@ -956,13 +956,13 @@
   VM.renderCategorias = function (sel) {
     var el = VM.qs(sel);
     if (!el) return;
-    el.innerHTML = VM.categorias().map(function (c) {
-      var n = VM.produtos().filter(function (p) { return p.cat === c.slug; }).length;
+    el.innerHTML = VM.categoriasAtivas().map(function (c) {
+      var n = VM.contarPorCategoria(c.slug);
       return '<a class="cat-card" href="categoria.html?cat=' + c.slug + '">' +
         VM.ico(c.icone, 'cat-card__ico') +
         '<h3>' + c.nome + '</h3>' +
         '<p>' + c.desc + '</p>' +
-        '<span class="cat-card__n">' + n + ' itens nesta demonstração</span>' +
+        '<span class="cat-card__n">' + n + (n === 1 ? ' produto' : ' produtos') + '</span>' +
         '<span class="cat-card__link">Ver produtos' + VM.icon('seta') + '</span>' +
       '</a>';
     }).join('') +

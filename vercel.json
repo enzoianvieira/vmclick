@@ -80,5 +80,15 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/manter-conexao",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/manter-conexao",
+      "schedule": "0 18 * * *"
+    }
   ]
 }

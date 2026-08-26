@@ -661,10 +661,41 @@
   function initSticky() {
     var bar = VM.qs('#headbar');
     if (!bar) return;
-    var alvo = bar.offsetTop;
-    function ver() { bar.classList.toggle('is-stuck', window.scrollY > alvo + 4); }
-    window.addEventListener('scroll', ver, { passive: true });
-    ver();
+
+    /* O header encolhe 16px ao grudar, e ele fica no fluxo: encolher reduz a
+       altura do documento na mesma medida e empurra o conteudo para cima. Com
+       um limiar unico e rente ao topo, esse deslocamento cruzava o limiar de
+       volta e a barra ficava piscando entre os dois tamanhos.
+
+       Dois limiares afastados resolvem: gruda so depois de 72px de rolagem e
+       so solta abaixo de 24px. O vao de 48px e maior que os 16px que o
+       documento se move, entao a mudanca de altura nunca consegue reverter o
+       proprio gatilho. O rAF garante uma avaliacao por quadro. */
+    var GRUDA = 72;
+    var SOLTA = 24;
+    var grudado = false;
+    var agendado = false;
+
+    function avaliar() {
+      agendado = false;
+      var y = window.scrollY;
+      if (!grudado && y > GRUDA) {
+        grudado = true;
+        bar.classList.add('is-stuck');
+      } else if (grudado && y < SOLTA) {
+        grudado = false;
+        bar.classList.remove('is-stuck');
+      }
+    }
+
+    function aoRolar() {
+      if (agendado) return;
+      agendado = true;
+      window.requestAnimationFrame(avaliar);
+    }
+
+    window.addEventListener('scroll', aoRolar, { passive: true });
+    avaliar();
   }
 
   /* ======================================================================

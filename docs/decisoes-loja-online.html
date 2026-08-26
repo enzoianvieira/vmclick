@@ -1,0 +1,541 @@
+<title>Decisões da Loja VM Click</title>
+<style>
+  /* Paleta herdada do design system da VM Click: teal institucional, vermelho
+     reservado a bloqueio, neutros levemente esverdeados. */
+  :root{
+    --ink:#141B1A; --ink-2:#3A4645; --ink-3:#54615F; --ink-4:#71807F;
+    --ground:#F4F7F6; --panel:#FFFFFF; --rule:#DDE4E3; --rule-2:#EAEFEE;
+    --teal:#076E65; --teal-2:#065950; --teal-soft:#E4F2EF; --teal-line:#B4E6DE;
+    --red:#C21F23; --red-soft:#FCE9E9;
+    --warn:#B4690E; --warn-soft:#FDF3E4;
+    --ok:#127A3E; --ok-soft:#E8F5EE;
+    --shadow:0 1px 2px rgba(10,15,15,.05), 0 10px 28px rgba(10,15,15,.06);
+    --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#EAF0EF; --ink-2:#C3CECC; --ink-3:#9AA7A5; --ink-4:#8B9997;
+      --ground:#0B100F; --panel:#141B1A; --rule:#28322F; --rule-2:#1D2624;
+      --teal:#4FC9B8; --teal-2:#7BDACB; --teal-soft:#0E2A27; --teal-line:#1E4640;
+      --red:#F08A85; --red-soft:#2C1416;
+      --warn:#E0A44A; --warn-soft:#2A1F0D;
+      --ok:#5FC98A; --ok-soft:#0F2418;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#EAF0EF; --ink-2:#C3CECC; --ink-3:#9AA7A5; --ink-4:#8B9997;
+    --ground:#0B100F; --panel:#141B1A; --rule:#28322F; --rule-2:#1D2624;
+    --teal:#4FC9B8; --teal-2:#7BDACB; --teal-soft:#0E2A27; --teal-line:#1E4640;
+    --red:#F08A85; --red-soft:#2C1416;
+    --warn:#E0A44A; --warn-soft:#2A1F0D;
+    --ok:#5FC98A; --ok-soft:#0F2418;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink-2);
+    font-family:var(--sans); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:0 20px 100px}
+  :focus-visible{outline:2px solid var(--teal); outline-offset:3px; border-radius:3px}
+
+  /* ---------- topo ---------- */
+  .mast{padding:44px 0 26px; border-bottom:2px solid var(--ink); margin-bottom:36px}
+  .kicker{
+    font-family:var(--mono); font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--teal); margin:0 0 12px;
+  }
+  h1{
+    font-size:clamp(30px,4.6vw,46px); line-height:1.05; margin:0;
+    letter-spacing:-.03em; color:var(--ink); font-weight:700; text-wrap:balance;
+  }
+  .sub{margin:16px 0 0; font-size:17px; color:var(--ink-3); max-width:65ch}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:6px 26px; margin-top:20px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink-4);
+  }
+  .meta b{color:var(--ink-2); font-weight:600}
+
+  /* ---------- layout ---------- */
+  .cols{display:grid; grid-template-columns:1fr; gap:36px}
+  @media (min-width:1000px){ .cols{grid-template-columns:190px 1fr; gap:52px} }
+  nav.toc{align-self:start}
+  @media (min-width:1000px){ nav.toc{position:sticky; top:24px} }
+  .toc ol{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:2px 14px}
+  @media (min-width:1000px){ .toc ol{display:block} }
+  .toc a{
+    display:block; padding:5px 0; text-decoration:none; color:var(--ink-4);
+    font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    border-bottom:1px solid transparent;
+  }
+  .toc a:hover{color:var(--teal); border-bottom-color:var(--teal)}
+
+  main{min-width:0; display:flex; flex-direction:column; gap:56px}
+  section{scroll-margin-top:24px}
+  .head{border-top:1px solid var(--rule); padding-top:14px; margin-bottom:20px}
+  .eyebrow{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-4); display:block; margin-bottom:8px;
+  }
+  h2{font-size:clamp(21px,2.6vw,27px); margin:0; letter-spacing:-.02em; line-height:1.2; color:var(--ink); text-wrap:balance}
+  h3{font-size:16px; margin:0 0 10px; color:var(--ink); letter-spacing:-.01em}
+  p{margin:0; max-width:68ch}
+  .lede{color:var(--ink-3); margin-top:10px; max-width:66ch}
+  .stack{display:flex; flex-direction:column; gap:18px}
+
+  /* ---------- placar ---------- */
+  .placar{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .kpi{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:18px}
+  .kpi .n{
+    font-size:30px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+    font-variant-numeric:tabular-nums; line-height:1.1; display:block;
+  }
+  .kpi .t{font-size:13px; color:var(--ink-4); margin-top:5px; display:block}
+  .kpi--alerta{border-color:var(--red); background:var(--red-soft)}
+  .kpi--alerta .n{color:var(--red)}
+  .kpi--ok{border-color:var(--teal-line); background:var(--teal-soft)}
+  .kpi--ok .n{color:var(--teal)}
+
+  /* ---------- fluxo ---------- */
+  .fluxo{
+    background:var(--panel); border:1px solid var(--rule); border-radius:12px;
+    padding:22px; overflow-x:auto;
+  }
+  .fluxo ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0}
+  .fluxo li{display:grid; grid-template-columns:132px 1fr; gap:18px; align-items:start; padding:11px 0}
+  @media (max-width:640px){ .fluxo li{grid-template-columns:1fr; gap:4px} }
+  .fluxo .quem{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+    padding:4px 9px; border-radius:99px; justify-self:start; white-space:nowrap;
+  }
+  .q-olist{background:var(--teal-soft); color:var(--teal)}
+  .q-site{background:var(--rule-2); color:var(--ink-3)}
+  .q-fora{background:var(--warn-soft); color:var(--warn)}
+  .fluxo .oq{font-size:14.5px; color:var(--ink-2)}
+  .fluxo .oq b{color:var(--ink)}
+  .fluxo li + li{border-top:1px dashed var(--rule)}
+
+  /* ---------- decisão ---------- */
+  .opcoes{display:grid; gap:14px; grid-template-columns:1fr}
+  @media (min-width:760px){ .opcoes{grid-template-columns:1fr 1fr} }
+  .op{
+    background:var(--panel); border:1px solid var(--rule); border-radius:12px;
+    padding:20px; display:flex; flex-direction:column; gap:10px;
+  }
+  .op--rec{border-color:var(--teal); box-shadow:var(--shadow)}
+  .op__tag{
+    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--teal); background:var(--teal-soft); padding:3px 9px; border-radius:99px;
+    align-self:flex-start;
+  }
+  .op h3{margin:0}
+  .op p{font-size:14.5px; color:var(--ink-3)}
+  .op ul{margin:0; padding-left:17px; font-size:14px; color:var(--ink-3); display:flex; flex-direction:column; gap:5px}
+  .op li b{color:var(--ink-2)}
+
+  /* ---------- tabelas ---------- */
+  .tw{overflow-x:auto; border:1px solid var(--rule); border-radius:12px; background:var(--panel)}
+  table{border-collapse:collapse; width:100%; font-size:14px; min-width:520px}
+  th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--rule-2); vertical-align:top}
+  thead th{
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-4); background:var(--ground); border-bottom:1px solid var(--rule);
+  }
+  tbody tr:last-child td{border-bottom:0}
+  td b{color:var(--ink)}
+  .num{font-variant-numeric:tabular-nums}
+  code{font-family:var(--mono); font-size:12.5px; background:var(--rule-2); padding:1px 5px; border-radius:4px}
+
+  /* ---------- avisos ---------- */
+  .nota{border-left:3px solid var(--teal); background:var(--teal-soft); padding:15px 17px; border-radius:0 10px 10px 0; font-size:14.5px; color:var(--ink-2)}
+  .nota b{color:var(--ink)}
+  .nota--alerta{border-left-color:var(--red); background:var(--red-soft)}
+  .nota--atencao{border-left-color:var(--warn); background:var(--warn-soft)}
+
+  .selo{
+    display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:99px;
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:600;
+  }
+  .s-bloqueia{background:var(--red-soft); color:var(--red)}
+  .s-atrapalha{background:var(--warn-soft); color:var(--warn)}
+  .s-ok{background:var(--ok-soft); color:var(--ok)}
+  .s-decidir{background:var(--rule-2); color:var(--ink-3)}
+
+  /* ---------- passos ---------- */
+  .passos{display:flex; flex-direction:column; gap:2px}
+  .passo{
+    display:grid; grid-template-columns:34px 1fr; gap:16px; align-items:start;
+    background:var(--panel); border:1px solid var(--rule); padding:16px 18px;
+  }
+  .passo:first-child{border-radius:12px 12px 0 0}
+  .passo:last-child{border-radius:0 0 12px 12px}
+  .passo__n{
+    width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--ground);
+    display:grid; place-items:center; font-size:12.5px; font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .passo__c b{color:var(--ink); display:block; margin-bottom:3px}
+  .passo__c span{font-size:14.5px; color:var(--ink-3)}
+  .passo--travado .passo__n{background:var(--red); color:#fff}
+
+  ul.limpa{margin:0; padding-left:18px; color:var(--ink-3); font-size:15px; display:flex; flex-direction:column; gap:7px}
+  ul.limpa b{color:var(--ink-2)}
+
+  footer.fim{margin-top:70px; border-top:1px solid var(--rule); padding-top:18px;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-4)}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="kicker">VM Click · loja online · fase 2</p>
+    <h1>Decisões para colocar a loja no ar</h1>
+    <p class="sub">O site já está construído e puxando produtos do Olist. Para vender de verdade faltam quatro decisões e uma pendência de cadastro. Este documento explica cada uma, com as opções e a recomendação.</p>
+    <div class="meta">
+      <span>Documento de <b>decisão</b></span>
+      <span>Data <b>25 ago 2026</b></span>
+      <span>Decisões pendentes <b>4</b></span>
+      <span>Bloqueio ativo <b>1</b></span>
+    </div>
+  </header>
+
+  <div class="cols">
+    <nav class="toc" aria-label="Sumário">
+      <ol>
+        <li><a href="#situacao">Onde estamos</a></li>
+        <li><a href="#estrutura">Como funciona</a></li>
+        <li><a href="#pagamento">1. Pagamento</a></li>
+        <li><a href="#frete">2. Frete</a></li>
+        <li><a href="#catalogo">3. Catálogo</a></li>
+        <li><a href="#backoffice">4. Back office</a></li>
+        <li><a href="#cadastro">Pendência de cadastro</a></li>
+        <li><a href="#sequencia">Sequência</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <!-- SITUAÇÃO -->
+      <section id="situacao">
+        <div class="head">
+          <span class="eyebrow">Situação</span>
+          <h2>Onde estamos hoje</h2>
+          <p class="lede">O site está pronto e funcionando como demonstração, com produtos reais vindos do Olist. O que falta é a camada de venda.</p>
+        </div>
+
+        <div class="placar">
+          <div class="kpi kpi--ok"><span class="n">13</span><span class="t">páginas construídas e testadas</span></div>
+          <div class="kpi kpi--ok"><span class="n">19</span><span class="t">produtos reais sincronizados do Olist</span></div>
+          <div class="kpi"><span class="n">4</span><span class="t">decisões aguardando o cliente</span></div>
+          <div class="kpi kpi--alerta"><span class="n">16</span><span class="t">produtos sem peso e sem dimensões</span></div>
+        </div>
+
+        <div class="stack" style="margin-top:20px">
+          <div class="nota">
+            <b>O que já funciona:</b> vitrine, busca, filtros, página de produto com especificações, carrinho, simulação de frete e checkout de demonstração. Design, conteúdo institucional e blog também estão prontos.
+          </div>
+          <div class="nota nota--alerta">
+            <b>O que impede vender hoje:</b> 16 dos 19 produtos não têm peso nem dimensões cadastrados no Olist. Sem esses dois campos não existe cálculo de frete — nenhuma plataforma do mercado consegue cotar sem eles.
+          </div>
+        </div>
+      </section>
+
+      <!-- ESTRUTURA -->
+      <section id="estrutura">
+        <div class="head">
+          <span class="eyebrow">Arquitetura</span>
+          <h2>Como a estrutura funciona</h2>
+          <p class="lede">O Olist continua sendo o dono do dado, como já é hoje. O site é a vitrine. Só duas coisas vêm de fora: pagamento e frete.</p>
+        </div>
+
+        <div class="fluxo">
+          <ol>
+            <li><span class="quem q-olist">Olist</span><span class="oq"><b>Produto é cadastrado</b> com preço, estoque, peso e dimensões</span></li>
+            <li><span class="quem q-site">Site</span><span class="oq"><b>Sincronização</b> traz os produtos para a vitrine</span></li>
+            <li><span class="quem q-site">Site</span><span class="oq"><b>Cliente escolhe</b> e monta o carrinho</span></li>
+            <li><span class="quem q-fora">Frete</span><span class="oq"><b>Cotação por CEP</b> usando peso e dimensões do produto</span></li>
+            <li><span class="quem q-fora">Gateway</span><span class="oq"><b>Cliente paga</b> na tela do provedor, com Pix, boleto ou cartão</span></li>
+            <li><span class="quem q-site">Site</span><span class="oq"><b>Confirmação do pagamento</b> chega automaticamente</span></li>
+            <li><span class="quem q-olist">Olist</span><span class="oq"><b>Pedido entra no ERP</b>, a nota fiscal é emitida e o estoque baixa</span></li>
+            <li><span class="quem q-olist">Olist</span><span class="oq"><b>Separação e envio</b> seguem o processo que a loja já usa hoje</span></li>
+          </ol>
+        </div>
+
+        <div class="nota" style="margin-top:16px">
+          <b>Repare que o Olist aparece nas duas pontas.</b> Ele alimenta a vitrine e recebe o pedido de volta. É esse retorno que garante nota fiscal emitida, estoque baixado e nenhuma venda duplicada. Nada do que a loja já faz hoje muda.
+        </div>
+
+        <div class="nota nota--atencao" style="margin-top:12px">
+          <b>Dado sensível nunca fica no navegador.</b> A chave do Olist e a do provedor de pagamento ficam em uma camada protegida no servidor. Se ficassem no site, qualquer visitante conseguiria copiá-las e acessar catálogo, custos e pedidos.
+        </div>
+      </section>
+
+      <!-- PAGAMENTO -->
+      <section id="pagamento">
+        <div class="head">
+          <span class="eyebrow">Decisão 1 · aguardando o cliente</span>
+          <h2>Quem processa os pagamentos</h2>
+          <p class="lede">O provedor de pagamento cuida de Pix, boleto e cartão, e assume a análise de fraude. A loja recebe o dinheiro já conferido.</p>
+        </div>
+
+        <div class="opcoes">
+          <div class="op op--rec">
+            <span class="op__tag">Recomendado</span>
+            <h3>Mercado Pago</h3>
+            <p>A VM Click já vende no Mercado Livre, então a conta, o histórico e a rotina financeira já existem.</p>
+            <ul>
+              <li><b>A favor:</b> nada de novo para aprender no financeiro; Pix, boleto e cartão inclusos; forte reconhecimento pelo comprador brasileiro</li>
+              <li><b>Contra:</b> taxa por venda costuma ser maior que a de concorrentes</li>
+              <li><b>Confirmar:</b> taxa vigente por meio de pagamento e prazo de repasse</li>
+            </ul>
+          </div>
+
+          <div class="op">
+            <h3>Pagar.me ou Asaas</h3>
+            <p>Alternativas com taxa historicamente mais competitiva, especialmente conforme o volume cresce.</p>
+            <ul>
+              <li><b>A favor:</b> taxa geralmente menor; boa documentação técnica</li>
+              <li><b>Contra:</b> mais uma conta e mais uma conciliação financeira para a equipe acompanhar</li>
+              <li><b>Confirmar:</b> taxa proposta para o volume estimado e exigências de cadastro</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="nota" style="margin-top:16px">
+          <b>Vale para qualquer escolha:</b> o pagamento acontece em tela do próprio provedor. O número do cartão nunca passa pelo site da VM Click. Isso reduz drasticamente a responsabilidade legal da loja em caso de incidente e é prática padrão do mercado.
+        </div>
+
+        <div class="nota nota--atencao" style="margin-top:12px">
+          <b>A decisão é comercial, não técnica.</b> Do lado do site o trabalho é praticamente o mesmo nos três. O que muda é a taxa e a rotina financeira. Recomendo pedir proposta aos três e decidir pelo número.
+        </div>
+      </section>
+
+      <!-- FRETE -->
+      <section id="frete">
+        <div class="head">
+          <span class="eyebrow">Decisão 2 · aguardando o cliente</span>
+          <h2>Como o frete é calculado e contratado</h2>
+          <p class="lede">São duas situações diferentes: a entrega própria em Curitiba, que a loja já faz, e o envio para fora, que precisa de transportadora.</p>
+        </div>
+
+        <div class="opcoes">
+          <div class="op op--rec">
+            <span class="op__tag">Recomendado</span>
+            <h3>Melhor Envio</h3>
+            <p>Intermediador que compara Correios e transportadoras particulares numa cotação só.</p>
+            <ul>
+              <li><b>A favor:</b> dispensa contrato direto com os Correios; compara preços automaticamente; costuma sair mais barato que o balcão</li>
+              <li><b>Contra:</b> mais um intermediário no processo de postagem</li>
+              <li><b>Confirmar:</b> se atende bem as regiões para onde a loja mais vende</li>
+            </ul>
+          </div>
+
+          <div class="op">
+            <h3>Contrato direto com os Correios</h3>
+            <p>Contrato próprio da VM Click, com tabela negociada por volume.</p>
+            <ul>
+              <li><b>A favor:</b> preço melhor se o volume for alto e constante</li>
+              <li><b>Contra:</b> exige contrato, negociação e volume mínimo; sem comparação automática com transportadoras</li>
+              <li><b>Confirmar:</b> se o volume previsto justifica o contrato</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="nota" style="margin-top:16px">
+          <b>A entrega em Curitiba continua sendo de vocês.</b> A regra que já está no site (região metropolitana em 1 a 3 dias úteis, retirada na loja a partir de 2 horas) não depende de transportadora. Só é preciso definir o valor cobrado por faixa de CEP e o valor mínimo para frete grátis.
+        </div>
+
+        <div class="nota nota--alerta" style="margin-top:12px">
+          <b>Nenhuma das duas opções funciona sem peso e dimensões cadastrados.</b> Transportadora cobra pelo maior valor entre peso real e cubagem. Hoje 16 dos 19 produtos não têm esses campos preenchidos.
+        </div>
+      </section>
+
+      <!-- CATÁLOGO -->
+      <section id="catalogo">
+        <div class="head">
+          <span class="eyebrow">Decisão 3 · aguardando o cliente</span>
+          <h2>Quantos produtos vão para o site</h2>
+          <p class="lede">Esta decisão muda a engenharia do site, então precisa ser tomada antes da construção e não depois.</p>
+        </div>
+
+        <div class="opcoes">
+          <div class="op op--rec">
+            <span class="op__tag">Recomendado para começar</span>
+            <h3>Catálogo curado</h3>
+            <p>Uma seleção de produtos, definida por lista. Hoje são 19; pode crescer para centenas.</p>
+            <ul>
+              <li><b>A favor:</b> site muito rápido, custo de hospedagem quase zero, cadastro tratado com capricho item a item</li>
+              <li><b>Contra:</b> produto novo só aparece quando entra na lista</li>
+              <li><b>Bom para:</b> começar vendendo os itens de maior giro e aprender com venda real</li>
+            </ul>
+          </div>
+
+          <div class="op">
+            <h3>Catálogo completo</h3>
+            <p>Os mais de 30.000 itens do Olist publicados no site.</p>
+            <ul>
+              <li><b>A favor:</b> tudo disponível, produto novo entra sozinho</li>
+              <li><b>Contra:</b> exige banco de dados e busca dedicada, aumenta o custo mensal e o prazo de construção</li>
+              <li><b>Atenção:</b> exigiria auditar o cadastro dos 30.000 itens, não de algumas dezenas</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="nota" style="margin-top:16px">
+          <b>Caminho sugerido:</b> abrir com catálogo curado e crescer a lista conforme o cadastro for sendo saneado. Migrar para catálogo completo depois é possível e não joga fora o que foi construído.
+        </div>
+      </section>
+
+      <!-- BACK OFFICE -->
+      <section id="backoffice">
+        <div class="head">
+          <span class="eyebrow">Decisão 4 · aguardando o cliente</span>
+          <h2>O painel administrativo</h2>
+          <p class="lede">Aqui vale uma ressalva antes das opções: boa parte do que se imagina para um painel próprio já existe pronta no Olist.</p>
+        </div>
+
+        <div class="tw">
+          <table>
+            <thead>
+              <tr><th>Tarefa do dia a dia</th><th>Onde fazer</th><th>Precisa construir?</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Ver e acompanhar pedidos</td><td><b>Olist</b></td><td><span class="selo s-ok">Já existe</span></td></tr>
+              <tr><td>Emitir nota fiscal</td><td><b>Olist</b></td><td><span class="selo s-ok">Já existe</span></td></tr>
+              <tr><td>Marcar como despachado e informar rastreio</td><td><b>Olist</b></td><td><span class="selo s-ok">Já existe</span></td></tr>
+              <tr><td>Controlar estoque e preço</td><td><b>Olist</b></td><td><span class="selo s-ok">Já existe</span></td></tr>
+              <tr><td>Cadastrar e editar produto</td><td><b>Olist</b></td><td><span class="selo s-ok">Já existe</span></td></tr>
+              <tr><td>Escolher quais produtos aparecem no site</td><td>Painel do site</td><td><span class="selo s-atrapalha">Construir</span></td></tr>
+              <tr><td>Definir destaques e ofertas da home</td><td>Painel do site</td><td><span class="selo s-atrapalha">Construir</span></td></tr>
+              <tr><td>Trocar banners</td><td>Painel do site</td><td><span class="selo s-atrapalha">Construir</span></td></tr>
+              <tr><td>Escrever e publicar no blog</td><td>Painel do site</td><td><span class="selo s-atrapalha">Construir</span></td></tr>
+              <tr><td>Cliente consultar o próprio pedido</td><td>Site lê do Olist</td><td><span class="selo s-atrapalha">Construir</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="stack" style="margin-top:18px">
+          <div class="nota">
+            <b>A recomendação:</b> construir o painel apenas para o que o Olist não faz — curadoria de produtos do site, destaques, banners e blog. Gestão de pedido, nota fiscal e estoque continuam no Olist.
+          </div>
+          <div class="nota nota--atencao">
+            <b>Por que não duplicar a gestão de pedidos:</b> ter dois lugares para mudar o status de um pedido cria divergência. Um dia alguém marca como enviado no site e esquece no Olist, e aí a nota fiscal e o estoque ficam errados. Um pedido deve ter um único lugar de verdade, e esse lugar já é o Olist.
+          </div>
+          <div class="nota">
+            <b>O cliente final continua informado.</b> O site mostra o andamento do pedido lendo o status direto do Olist. Quando a equipe atualiza no ERP, o cliente vê no site. A informação é a mesma, sem trabalho dobrado.
+          </div>
+        </div>
+      </section>
+
+      <!-- CADASTRO -->
+      <section id="cadastro">
+        <div class="head">
+          <span class="eyebrow">Pendência · bloqueia o lançamento</span>
+          <h2>Cadastro dos produtos no Olist</h2>
+          <p class="lede">Auditoria feita nos 19 produtos que estão hoje no site. Nenhum está totalmente pronto para venda.</p>
+        </div>
+
+        <div class="tw">
+          <table>
+            <thead>
+              <tr><th>Situação</th><th class="num">Produtos</th><th>Consequência</th><th>Gravidade</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sem peso cadastrado</td><td class="num"><b>16 de 19</b></td>
+                <td>Frete não pode ser calculado</td><td><span class="selo s-bloqueia">Bloqueia</span></td>
+              </tr>
+              <tr>
+                <td>Sem dimensões</td><td class="num"><b>16 de 19</b></td>
+                <td>Transportadora cobra por cubagem e a cotação sai errada</td><td><span class="selo s-bloqueia">Bloqueia</span></td>
+              </tr>
+              <tr>
+                <td>Peso em gramas cadastrado como quilo</td><td class="num"><b>1</b></td>
+                <td>Uma lâmpada consta com 100 kg; o frete sairia absurdo e a venda seria perdida</td><td><span class="selo s-bloqueia">Bloqueia</span></td>
+              </tr>
+              <tr>
+                <td>Sem descrição</td><td class="num"><b>16 de 19</b></td>
+                <td>Menos conversão e menos posicionamento no Google</td><td><span class="selo s-atrapalha">Atrapalha</span></td>
+              </tr>
+              <tr>
+                <td>Nome todo em caixa alta</td><td class="num"><b>19 de 19</b></td>
+                <td>Nome de sistema, difícil de ler na vitrine</td><td><span class="selo s-decidir">Ajuste</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="nota nota--alerta" style="margin-top:16px">
+          <b>Este é o único item que trava o lançamento por completo.</b> Peso e dimensões são obrigatórios em qualquer plataforma de e-commerce do mercado. Não é uma exigência do site que construímos.
+        </div>
+
+        <p style="margin-top:14px">A planilha <code>auditoria-catalogo.csv</code> acompanha este documento com as 68 pendências, uma por linha, com código do produto e gravidade. O relatório pode ser gerado novamente a qualquer momento conforme o cadastro for corrigido.</p>
+      </section>
+
+      <!-- SEQUÊNCIA -->
+      <section id="sequencia">
+        <div class="head">
+          <span class="eyebrow">Plano</span>
+          <h2>Sequência sugerida</h2>
+          <p class="lede">A ordem importa: os itens 1 e 2 têm prazo externo e travam os demais, então começam agora e correm em paralelo.</p>
+        </div>
+
+        <div class="passos">
+          <div class="passo passo--travado">
+            <span class="passo__n">1</span>
+            <span class="passo__c"><b>Corrigir peso e dimensões no Olist</b>
+              <span>Responsável: VM Click. Começar pelos produtos que vão ao site. Enquanto isso não for feito, não existe frete e não existe venda.</span></span>
+          </div>
+          <div class="passo">
+            <span class="passo__n">2</span>
+            <span class="passo__c"><b>Escolher e contratar pagamento e frete</b>
+              <span>Responsável: VM Click. Pedir proposta e comparar taxas. Aprovação de cadastro leva alguns dias e costuma ser o que mais atrasa lançamento.</span></span>
+          </div>
+          <div class="passo">
+            <span class="passo__n">3</span>
+            <span class="passo__c"><b>Construir a camada de venda</b>
+              <span>Responsável: desenvolvimento. Cotação de frete, checkout, confirmação de pagamento e envio do pedido para o Olist.</span></span>
+          </div>
+          <div class="passo">
+            <span class="passo__n">4</span>
+            <span class="passo__c"><b>Construir o painel do site</b>
+              <span>Responsável: desenvolvimento. Curadoria de produtos, destaques, banners e blog. Sem duplicar o que o Olist já faz.</span></span>
+          </div>
+          <div class="passo">
+            <span class="passo__n">5</span>
+            <span class="passo__c"><b>Testar com venda real de valor baixo</b>
+              <span>Responsáveis: os dois lados. Comprar de verdade, conferir se o pedido chega ao Olist, se a nota sai e se o estoque baixa.</span></span>
+          </div>
+          <div class="passo">
+            <span class="passo__n">6</span>
+            <span class="passo__c"><b>Publicar e ampliar o catálogo</b>
+              <span>Responsáveis: os dois lados. Abrir para o público e crescer a lista de produtos conforme o cadastro for saneado.</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- O QUE NÃO MUDA -->
+      <section id="naomuda">
+        <div class="head">
+          <span class="eyebrow">Para tranquilizar</span>
+          <h2>O que não muda na rotina da loja</h2>
+        </div>
+        <ul class="limpa">
+          <li><b>O Olist continua sendo o sistema da empresa.</b> Nada é migrado e nada é substituído.</li>
+          <li><b>O cadastro de produto continua no mesmo lugar</b>, do mesmo jeito que é feito hoje.</li>
+          <li><b>A nota fiscal continua saindo pelo Olist</b>, com o mesmo processo.</li>
+          <li><b>O estoque continua sendo um só</b>, compartilhado entre loja física, marketplaces e o site novo.</li>
+          <li><b>As vendas do Mercado Livre seguem funcionando</b> exatamente como hoje. O site é um canal a mais, não um substituto.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="fim">VM Click · documento de decisão da fase 2 · preparado para aprovação do cliente</footer>
+</div>

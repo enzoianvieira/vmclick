@@ -37,7 +37,7 @@ const CACHE_DIR = path.join(__dirname, '.cache');
 const CATS_PATH = path.join(__dirname, 'categorias.json');
 const MAP_LEGACY_PATH = path.join(__dirname, 'categoria-map.json');
 const REGRAS = require('./regras-catalogo.js');
-const { detectarMarca } = require('./regras-marcas.js');
+const { detectarMarca, canonizarMarca } = require('./regras-marcas.js');
 
 const API_BASE = 'https://api.tiny.com.br/public-api/v3';
 
@@ -120,7 +120,76 @@ function toInt(v, fallback = 0) {
 }
 
 function stripHtml(s) {
-  return String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  /* <br> e fechamento de bloco viram espaco: sem isso as palavras grudam ao
+     redor da quebra de linha ("tecnologiae design", "gessoe PVC"). */
+  return String(s || '')
+    .replace(/<\s*br\s*\/?>/gi, ' ')
+    .replace(/<\s*\/\s*(p|div|li|ul|ol|tr|td|h[1-6]|section)\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* --------------------------------------------------------------------------
+   Separacao da descricao do fornecedor
+
+   O texto que vem do Olist e copia de anuncio de marketplace: junta descricao
+   do produto, ficha tecnica, propaganda da loja e um FAQ que fala em prazo do
+   "Mercado Envios". Publicar isso inteiro na aba Descricao poluiria a pagina e,
+   pior, contradiria a politica de entrega do proprio site.
+
+   Aqui o texto e dividido no que o site de fato tem:
+     - prosa  -> aba Descricao
+     - pares "Rotulo: valor" -> aba Especificacoes
+     - propaganda e FAQ -> descartados (o site tem secao propria de entrega,
+       devolucao e duvidas, com a informacao correta da VM Click)
+   -------------------------------------------------------------------------- */
+const CORTES_RUIDO = [
+  /_{4,}/,
+  /\bPor que comprar\b/i,
+  /\bPerguntas?\s+Frequentes\b/i,
+  /\bAgradecemos pela confian/i,
+  /\bCompre com seguran/i,
+  /\bSobre (a )?(nossa )?loja\b/i
+];
+
+const ROTULO_SPEC = /([A-ZÀ-ÝÁÉÍÓÚÂÊÔÃÕÇ][a-zà-ÿáéíóúâêôãõç]+(?:\s+(?:de|da|do|d[ae]s)?\s*[a-zà-ÿáéíóúâêôãõç]+){0,3})\s*:\s*/g;
+
+function separarDescricao(texto) {
+  /* stripHtml primeiro: as tags precisam virar espaco antes de qualquer corte */
+  const limpo = stripHtml(texto);
+  if (!limpo) return { descricao: '', specs: {} };
+
+  /* corta no primeiro marcador de ruido */
+  let corte = limpo.length;
+  for (const re of CORTES_RUIDO) {
+    const m = limpo.match(re);
+    if (m && m.index < corte) corte = m.index;
+  }
+  const util = limpo.slice(0, corte).trim();
+
+  /* localiza os pares "Rotulo: valor", que no anuncio vem colados */
+  const marcas = [];
+  let m;
+  ROTULO_SPEC.lastIndex = 0;
+  while ((m = ROTULO_SPEC.exec(util)) !== null) {
+    marcas.push({ rotulo: m[1].trim(), ini: m.index, fim: m.index + m[0].length });
+  }
+
+  /* um par solto costuma ser frase normal ("Atencao: ..."), nao ficha */
+  if (marcas.length < 2) return { descricao: util, specs: {} };
+
+  const specs = {};
+  marcas.forEach((a, i) => {
+    const fimValor = i + 1 < marcas.length ? marcas[i + 1].ini : util.length;
+    const valor = util.slice(a.fim, fimValor).trim().replace(/[.;,]+$/, '');
+    /* valor longo demais e prosa que caiu na peneira */
+    if (valor && valor.length <= 60 && a.rotulo.toLowerCase() !== 'marca') {
+      specs[a.rotulo] = valor;
+    }
+  });
+
+  return { descricao: util.slice(0, marcas[0].ini).trim(), specs };
 }
 
 function humanTime(sec) {
@@ -305,7 +374,9 @@ function mapDetalhe(d, cats) {
   /* O cadastro do Olist raramente preenche `marca`. Quando vier vazia,
      deriva do nome do produto (regras em regras-marcas.js). O dado do ERP
      sempre tem precedência sobre a derivação. */
-  const marca = (d.marca && d.marca.nome) ? d.marca.nome : detectarMarca(d.descricao || '');
+  /* canonizarMarca alinha a grafia: o Olist manda em caixa alta e a deteccao
+     por nome devolve a grafia oficial, o que criava marca duplicada no filtro. */
+  const marca = canonizarMarca((d.marca && d.marca.nome) ? d.marca.nome : detectarMarca(d.descricao || ''));
   const catId = d.categoria && d.categoria.id ? String(d.categoria.id) : null;
   const catPath = d.categoria && d.categoria.caminhoCompleto ? d.categoria.caminhoCompleto : (d.categoria && d.categoria.nome) || '';
 
@@ -322,6 +393,11 @@ function mapDetalhe(d, cats) {
   const dim = d.dimensoes || {};
 
   const specs = {};
+  /* Ficha tecnica que vinha embutida no texto do anuncio entra ANTES dos
+     campos fiscais: e o que o cliente le primeiro na aba Especificacoes. */
+  const separado = separarDescricao(d.descricaoComplementar || '');
+  Object.assign(specs, separado.specs);
+
   if (marca) specs['Marca'] = marca;
   if (d.gtin) specs['GTIN'] = String(d.gtin);
   if (d.ncm) specs['NCM'] = String(d.ncm);
@@ -353,7 +429,7 @@ function mapDetalhe(d, cats) {
     nota: 0,
     avaliacoes: 0,
     unidade: d.unidade || 'un',
-    desc: stripHtml(d.descricaoComplementar || ''),
+    desc: separado.descricao,
     specs,
   };
 }
@@ -463,12 +539,16 @@ function writeProdutosJs(catsBlock, produtos) {
 // -------- Cache-only: lê tudo do disco, zero requests --------
 function loadFromCacheOnly() {
   const files = fs.readdirSync(CACHE_DIR).filter((f) => f.startsWith('produto-') && f.endsWith('.json'));
+  /* o cache guarda tudo que ja foi sincronizado algum dia; sem este filtro o
+     modo cache-only ressuscitaria o catalogo inteiro por cima da lista curada */
   const detalhes = [];
   for (const f of files) {
     try {
       const raw = fs.readFileSync(path.join(CACHE_DIR, f), 'utf8');
       const data = JSON.parse(raw);
-      if (data) detalhes.push(data);
+      if (!data) continue;
+      if (SKUS_SET && !SKUS_SET.has(String(data.sku || '').toUpperCase())) continue;
+      detalhes.push(data);
     } catch {}
   }
   return detalhes;

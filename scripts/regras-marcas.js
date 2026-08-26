@@ -75,6 +75,9 @@ const MARCAS = [
   { n: 'Elgin',           match: /\belgin\b/i },
   { n: 'Foxlux',          match: /\bfox\s?lux\b/i },
   { n: 'Empalux',         match: /\bempalux\b/i },
+  { n: 'Mundilux',        match: /\bmundilux\b/i },
+  { n: 'Blumenau',        match: /\bblumenau\b/i },
+  { n: 'Stella',          match: /\bstella\b/i },
   { n: 'Decorlux',        match: /\bdecor\s?lux\b/i },
   { n: 'Golden',          match: /\bgolden\b/i },
 
@@ -130,6 +133,31 @@ function detectarMarca(nome) {
   return '';
 }
 
+/**
+ * Normaliza a grafia de uma marca ja conhecida.
+ *
+ * O Olist devolve `marca` em caixa alta ("SCHNEIDER"), enquanto a deteccao por
+ * nome devolve a grafia oficial ("Schneider"). Sem normalizar, a mesma marca
+ * aparece duas vezes no filtro da vitrine, so diferindo pela caixa.
+ *
+ * Marca desconhecida volta como veio, apenas com espacos aparados: melhor
+ * exibir o dado do fornecedor do que engoli-lo.
+ *
+ * @param {string} marca
+ * @returns {string}
+ */
+function canonizarMarca(marca) {
+  const limpo = String(marca || '').trim();
+  if (!limpo) return '';
+  const alvo = limpo.toLowerCase();
+  for (const m of MARCAS) {
+    if (m.n.toLowerCase() === alvo) return m.n;
+    if (m.match.test(limpo) && (!m.exceto || !m.exceto.test(limpo))) return m.n;
+  }
+  return limpo;
+}
+
 module.exports = MARCAS;
 module.exports.MARCAS = MARCAS;
 module.exports.detectarMarca = detectarMarca;
+module.exports.canonizarMarca = canonizarMarca;

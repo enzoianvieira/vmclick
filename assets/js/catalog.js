@@ -497,6 +497,83 @@
   /* ======================================================================
      3. PÁGINA DE PRODUTO (PDP)
      ====================================================================== */
+  /* ----------------------------------------------------------------------
+     Descricao do produto
+     O texto vem do Olist como um bloco corrido, sem uma unica quebra de
+     paragrafo: na tela virava parede. Aqui ele e quebrado em paragrafos por
+     frase e, quando for longo, nasce recolhido com um botao para abrir.
+     Produto sem descricao ganha um resumo montado a partir das specs, em vez
+     de uma aba vazia.
+     ---------------------------------------------------------------------- */
+  var DESC_LIMITE = 320;   /* acima disso, nasce recolhido */
+
+  function paragrafos(txt) {
+    var limpo = String(txt).replace(/\s+/g, ' ').trim();
+    /* corta apos ponto final seguido de espaco e maiuscula, agrupando de 2 em 2
+       frases para o bloco nao virar uma lista de linhas soltas */
+    var frases = limpo.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/);
+    var blocos = [];
+    for (var i = 0; i < frases.length; i += 2) {
+      blocos.push(frases.slice(i, i + 2).join(' '));
+    }
+    return blocos.filter(Boolean);
+  }
+
+  /* Os specs que o Olist devolve sao quase todos fiscais (GTIN, NCM, peso).
+     O que o cliente quer saber - potencia, temperatura de cor, base, tensao -
+     esta codificado no proprio nome do produto. Esta funcao le o nome e monta
+     uma frase legivel, em vez de despejar codigo fiscal na descricao. */
+  var TEMP_COR = { '2700': 'branco quente', '3000': 'branco quente', '4000': 'branco neutro',
+                   '5000': 'branco frio', '6000': 'branco frio', '6500': 'branco frio' };
+
+  function resumoTecnico(p) {
+    var n = (p.nome || '').toUpperCase();
+    var att = [];
+    var m;
+
+    if ((m = n.match(/(\d+)\s*W\b/)))          att.push(m[1] + 'W de potência');
+    if ((m = n.match(/(\d+)\s*LM\b/)))         att.push(m[1] + ' lúmens');
+    if ((m = n.match(/(\d)[.,]?(\d{3})\s*K\b/))) {
+      var kelvin = m[1] + m[2];
+      var nome = TEMP_COR[kelvin];
+      att.push(m[1] + '.' + m[2] + 'K' + (nome ? ' (' + nome + ')' : ''));
+    }
+    if ((m = n.match(/\b(E27|E14|GU10|G9|G13|MR16)\b/))) att.push('base ' + m[1]);
+    if (/\bBIVOLT\b|\bBIV\b/.test(n))          att.push('bivolt');
+    else if ((m = n.match(/\b(127|220)\s*V\b/))) att.push(m[1] + 'V');
+    if ((m = n.match(/(\d+)\s*A\b/)))          att.push(m[1] + 'A');
+    if ((m = n.match(/(\d+)\s*X\s*(\d+)\s*(CM|MM)/))) att.push(m[1] + 'x' + m[2] + m[3].toLowerCase());
+    if (/\bEMB\b|\bEMBUTIR\b/.test(n))        att.push('instalação de embutir');
+    else if (/\bSOB\b|\bSOBREPOR\b/.test(n))  att.push('instalação de sobrepor');
+
+    var marca = p.marca && p.marca !== '-' ? p.marca : '';
+    var frase = marca ? 'Produto ' + marca : 'Produto';
+    if (att.length) frase += ': ' + att.join(', ');
+    frase += '.';
+
+    var extra = (p.specs && p.specs.Garantia) ? ' Garantia de ' + p.specs.Garantia + '.' : '';
+
+    return '<p class="muted">' + frase + extra + '</p>' +
+      '<p class="muted">Medidas, peso e código de barras na aba <b>Especificações</b>. ' +
+      'Dúvida de aplicação ou compatibilidade, fale com o atendimento técnico.</p>';
+  }
+
+  function descricaoHTML(p) {
+    var txt = (p.desc || '').trim();
+
+    if (!txt) return resumoTecnico(p);
+
+    var blocos = paragrafos(txt);
+    var corpo = blocos.map(function (b) { return '<p class="muted">' + b + '</p>'; }).join('');
+
+    if (txt.length <= DESC_LIMITE) return corpo;
+
+    return '<div class="desc" data-desc>' +
+             '<div class="desc__corpo">' + corpo + '</div>' +
+             '<button class="desc__mais" type="button" aria-expanded="false">Ler descrição completa</button>' +
+           '</div>';
+  }
+
   VM.initPDP = function () {
     var slug = VM.param('p');
     var p = slug ? VM.produto(slug) : null;
@@ -528,7 +605,11 @@
         '<span aria-current="page">' + p.nome + '</span>';
     }
 
-    var specs = Object.keys(p.specs).map(function (k) {
+    /* 'Marca' ja tem linha propria no rodape da tabela; sem este filtro ela
+       aparecia duas vezes, uma vinda dos specs e outra do template. */
+    var specs = Object.keys(p.specs).filter(function (k) {
+      return k.toLowerCase() !== 'marca';
+    }).map(function (k) {
       return '<tr><th scope="row">' + k + '</th><td>' + p.specs[k] + '</td></tr>';
     }).join('');
 
@@ -680,7 +761,7 @@
           '<button role="tab" aria-selected="false" aria-controls="tab-ent" id="t-ent">Entrega e devolução</button>' +
         '</div>' +
         '<div class="tabpanel" id="tab-desc" role="tabpanel" aria-labelledby="t-desc">' +
-          '<p class="muted">' + p.desc + '</p></div>' +
+          descricaoHTML(p) + '</div>' +
         '<div class="tabpanel" id="tab-spec" role="tabpanel" aria-labelledby="t-spec" hidden>' +
           '<div class="spec-table-wrap"><table class="spec-table"><tbody>' + specs +
           '<tr><th scope="row">Marca</th><td>' + p.marca + '</td></tr>' +
@@ -693,6 +774,17 @@
           'Trocas e devoluções em até 7 dias corridos após o recebimento, conforme o Código de Defesa do Consumidor.</p></div>' +
       '</div>' +
     '</div>';
+
+    /* ler descricao completa */
+    var caixaDesc = VM.qs('[data-desc]');
+    if (caixaDesc) {
+      var btnDesc = VM.qs('.desc__mais', caixaDesc);
+      btnDesc.addEventListener('click', function () {
+        var aberto = caixaDesc.classList.toggle('is-open');
+        btnDesc.setAttribute('aria-expanded', String(aberto));
+        btnDesc.textContent = aberto ? 'Mostrar menos' : 'Ler descrição completa';
+      });
+    }
 
     /* quantidade */
     var qtd = VM.qs('#pdp-qtd');
@@ -939,9 +1031,6 @@
           '</li>';
         }).join('') +
       '</ul>' +
-
-      '<p class="mono subtle rv__aviso">Avaliações de demonstração, geradas para ilustrar a interface. ' +
-      'Na loja real este bloco é alimentado pelas avaliações dos clientes no WooCommerce.</p>' +
     '</div>';
 
     var btn = VM.qs('#rv-avaliar');

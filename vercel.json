@@ -90,5 +90,13 @@
       "path": "/api/manter-conexao",
       "schedule": "0 18 * * *"
     }
-  ]
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/admin/",
+      "permanent": false
+    }
+  ],
+  "cleanUrls": false
 }

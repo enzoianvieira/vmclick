@@ -48,8 +48,26 @@ module.exports = async (req, res) => {
   const usuario = String(corpo.usuario || '');
   const senha = String(corpo.senha || '');
 
-  const usuarioOk = usuario === (process.env.ADMIN_USUARIO || '');
-  const senhaOk = senhaConfere(senha, process.env.ADMIN_SENHA_HASH || '');
+  /* Erro comum: colar a senha em ADMIN_SENHA_HASH em vez do hash. Sem este
+     aviso o servidor recusa todo login com "usuário ou senha incorretos" e não
+     há como descobrir o motivo olhando a tela. */
+  const hashGuardado = process.env.ADMIN_SENHA_HASH || '';
+  const pareceHash = hashGuardado.includes(':') && hashGuardado.length > 100;
+
+  if (!process.env.ADMIN_USUARIO || !hashGuardado) {
+    return res.status(500).json({
+      erro: 'Painel não configurado no servidor: falta ADMIN_USUARIO ou ADMIN_SENHA_HASH.',
+    });
+  }
+  if (!pareceHash) {
+    return res.status(500).json({
+      erro: 'ADMIN_SENHA_HASH não é um hash. Parece que a senha foi colada no lugar dele. ' +
+            'Gere o valor certo com: node scripts/gerar-senha-admin.js "usuario" "senha"',
+    });
+  }
+
+  const usuarioOk = usuario === process.env.ADMIN_USUARIO;
+  const senhaOk = senhaConfere(senha, hashGuardado);
 
   /* mensagem única para os dois casos: não entrega se o usuário existe */
   if (!usuarioOk || !senhaOk) {

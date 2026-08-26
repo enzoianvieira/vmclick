@@ -73,14 +73,23 @@ function servirArquivo(req, res, caminhoUrl) {
     return;
   }
 
-  fs.readFile(destino, (err, dados) => {
+  /* caminho de pasta sem barra final ("/admin") tem de servir o index dela,
+     igual a Vercel faz. Sem isto, o teste local nao reproduz producao. */
+  let alvo = destino;
+  try {
+    if (fs.existsSync(alvo) && fs.statSync(alvo).isDirectory()) {
+      alvo = path.join(alvo, 'index.html');
+    }
+  } catch (e) { /* segue e deixa o readFile decidir */ }
+
+  fs.readFile(alvo, (err, dados) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('<h1>404</h1><p>Arquivo não encontrado: ' + rel + '</p>');
       return;
     }
     res.writeHead(200, {
-      'Content-Type': TIPOS[path.extname(destino).toLowerCase()] || 'application/octet-stream',
+      'Content-Type': TIPOS[path.extname(alvo).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-store',
     });
     res.end(dados);

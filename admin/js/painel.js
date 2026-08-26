@@ -316,7 +316,7 @@
           '<button type="button" data-desce' + (i === estado.banners.length - 1 ? ' disabled' : '') + ' aria-label="Descer">▼</button>' +
         '</div>' +
         '<div class="item__corpo" style="display:flex;gap:14px;align-items:center">' +
-          '<img class="miniatura" src="../' + esc(b.img) + '-800.jpg" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '<img class="miniatura" src="/' + esc(b.img) + '-800.jpg" alt="" onerror="this.style.visibility=\'hidden\'">' +
           '<span><b>' + esc(b.titulo) + '</b><span>' + esc(b.link) + '</span></span>' +
         '</div>' +
         '<div class="item__acoes">' +
@@ -411,7 +411,7 @@
             ' · ' + esc(p.leitura || '') + ' · <code>' + esc(p.slug) + '</code></span>' +
         '</div>' +
         '<div class="item__acoes">' +
-          '<a class="bt bt--mini bt--linha" href="../' + esc(p.slug) + '" target="_blank" rel="noopener">Ver</a>' +
+          '<a class="bt bt--mini bt--linha" href="/' + esc(p.slug) + '" target="_blank" rel="noopener">Ver</a>' +
           '<button class="bt bt--mini bt--linha" type="button" data-editar>Editar</button>' +
           '<button class="bt bt--mini bt--perigo" type="button" data-excluir>Excluir</button>' +
         '</div>' +
@@ -528,7 +528,7 @@
           '<div class="aviso"><b>Publicado.</b> ' + r.publicados + ' ' + ROTULO_TIPO[tipo] +
           ' no ar. O site leva cerca de um minuto para atualizar.</div>' + extra +
           '<div class="bt-linha" style="margin-top:16px">' +
-            '<a class="bt bt--principal" href="../index.html" target="_blank" rel="noopener">Ver o site</a>' +
+            '<a class="bt bt--principal" href="/index.html" target="_blank" rel="noopener">Ver o site</a>' +
             '<button class="bt bt--linha" type="button" data-fechar>Fechar</button></div>';
         $$('#modal [data-fechar]').forEach(function (x) { x.addEventListener('click', fecharModal); });
 
@@ -564,11 +564,11 @@
   /* ====================================================================== */
 
   $('#sair').addEventListener('click', function () {
-    API.sair().finally(function () { location.replace('index.html'); });
+    API.sair().finally(function () { location.replace('/admin/'); });
   });
 
   API.sessao().then(function (s) {
-    if (!s) { location.replace('index.html'); return; }
+    if (!s) { location.replace('/admin/'); return; }
     $('#quem').textContent = s.usuario;
     renderProdutos();
     renderBanners();

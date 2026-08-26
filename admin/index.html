@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Entrar | Painel VM Click</title>
-<link rel="icon" type="image/png" sizes="32x32" href="../assets/img/brand/favicon-32.png">
-<link rel="stylesheet" href="../assets/css/fonts.css">
-<link rel="stylesheet" href="../assets/css/tokens.css">
-<link rel="stylesheet" href="css/admin.css">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/brand/favicon-32.png">
+<link rel="stylesheet" href="/assets/css/fonts.css">
+<link rel="stylesheet" href="/assets/css/tokens.css">
+<link rel="stylesheet" href="/admin/css/admin.css">
 </head>
 <body class="admin">
 
 <main class="login">
   <div class="login__caixa">
-    <img class="login__logo" src="../assets/img/brand/logo-lockup.png" alt="VM Click">
+    <img class="login__logo" src="/assets/img/brand/logo-lockup.png" alt="VM Click">
 
     <div>
       <h1>Painel da loja</h1>
@@ -42,7 +42,7 @@
   </div>
 </main>
 
-<script src="js/api.js"></script>
+<script src="/admin/js/api.js"></script>
 <script>
 (function () {
   var form = document.getElementById('form-login');
@@ -50,7 +50,7 @@
   var botao = document.getElementById('entrar');
 
   /* já tem sessão? vai direto para o painel */
-  API.sessao().then(function (s) { if (s) location.replace('painel.html'); });
+  API.sessao().then(function (s) { if (s) location.replace('/admin/painel.html'); });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -59,7 +59,7 @@
     botao.textContent = 'Entrando…';
 
     API.entrar(document.getElementById('usuario').value, document.getElementById('senha').value)
-      .then(function () { location.replace('painel.html'); })
+      .then(function () { location.replace('/admin/painel.html'); })
       .catch(function (err) {
         erro.textContent = err.message;
         erro.hidden = false;

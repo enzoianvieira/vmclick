@@ -11,7 +11,7 @@ window.API = (function () {
   'use strict';
 
   function paraLogin() {
-    if (!/\/admin\/index\.html?$/.test(location.pathname)) location.replace('index.html');
+    if (!/\/admin\/?(index\.html?)?$/.test(location.pathname)) location.replace('/admin/');
   }
 
   async function pedir(caminho, opcoes) {

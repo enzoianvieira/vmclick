@@ -76,43 +76,7 @@
     <div class="container">
       <div class="carrossel" id="banners" role="group"
            aria-roledescription="carrossel" aria-label="Ofertas em destaque">
-        <div class="carrossel__trilha">
-
-          <div class="carrossel__slide" data-titulo="Promoção em iluminação">
-            <a href="categoria.html?cat=iluminacao-led">
-              <picture>
-                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-iluminacao-1920.webp">
-                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-iluminacao-1920.jpg">
-                <source type="image/webp" srcset="assets/img/banners/promo-iluminacao-800.webp">
-                <img src="assets/img/banners/promo-iluminacao-800.jpg"
-                     alt="Promoção em iluminação: lâmpadas e materiais elétricos, LED a partir de R$ 19,90">
-              </picture>
-            </a>
-          </div>
-
-          <div class="carrossel__slide" data-titulo="Promoção em hidráulica">
-            <a href="produtos.html?q=pvc">
-              <picture>
-                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-hidraulica-1920.webp">
-                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-hidraulica-1920.jpg">
-                <source type="image/webp" srcset="assets/img/banners/promo-hidraulica-800.webp">
-                <img src="assets/img/banners/promo-hidraulica-800.jpg" fetchpriority="low"
-                     alt="Promoção em hidráulica: tubos e conexões, conexões PVC a partir de R$ 12,90">
-              </picture>
-            </a>
-          </div>
-
-          <div class="carrossel__slide" data-titulo="Promoção em ferramentas">
-            <a href="categoria.html?cat=ferramentas-manuais">
-              <picture>
-                <source media="(min-width: 760px)" type="image/webp" srcset="assets/img/banners/promo-ferramentas-1920.webp">
-                <source media="(min-width: 760px)" type="image/jpeg" srcset="assets/img/banners/promo-ferramentas-1920.jpg">
-                <source type="image/webp" srcset="assets/img/banners/promo-ferramentas-800.webp">
-                <img src="assets/img/banners/promo-ferramentas-800.jpg" fetchpriority="low"
-                     alt="Promoção em ferramentas: chaves e alicates, chave de fenda a partir de R$ 9,90">
-              </picture>
-            </a>
-          </div>
+        <div class="carrossel__trilha"></div>
 
         </div>
       </div>
@@ -252,6 +216,7 @@
 <script src="data/produtos.js"></script>
 <script src="data/marcas.js" onerror="window.VM_MARCAS=[]"></script>
 <script src="data/curadoria.js" onerror="window.VM_CURADORIA=null"></script>
+<script src="data/banners.js" onerror="window.VM_BANNERS=[]"></script>
 <script src="assets/js/sprite.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -315,6 +280,25 @@ document.addEventListener('vm:ready', function () {
   } else {
     faixaMarcas.closest('section').hidden = true;
   }
+
+  /* Banners vêm de data/banners.js, editável pelo painel. Cada banner aponta
+     para um caminho base e o site monta as quatro variações de tamanho. */
+  var banners = (window.VM_BANNERS || []).filter(function (b) { return b.ativo !== false; });
+  var trilha = document.querySelector('#banners .carrossel__trilha');
+  if (trilha) {
+    trilha.innerHTML = banners.map(function (b, i) {
+      var esc = function (t) { return String(t || '').replace(/"/g, '&quot;'); };
+      return '<div class="carrossel__slide" data-titulo="' + esc(b.titulo) + '">' +
+        '<a href="' + esc(b.link) + '"><picture>' +
+          '<source media="(min-width: 760px)" type="image/webp" srcset="' + b.img + '-1920.webp">' +
+          '<source media="(min-width: 760px)" type="image/jpeg" srcset="' + b.img + '-1920.jpg">' +
+          '<source type="image/webp" srcset="' + b.img + '-800.webp">' +
+          '<img src="' + b.img + '-800.jpg" alt="' + esc(b.alt) + '"' +
+            (i ? ' fetchpriority="low"' : '') + '>' +
+        '</picture></a></div>';
+    }).join('');
+  }
+  if (!banners.length && trilha) trilha.closest('section').hidden = true;
 
   VM.initCarrossel('#banners');
 

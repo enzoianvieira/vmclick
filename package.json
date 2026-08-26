@@ -4,7 +4,7 @@
   "private": true,
   "description": "VM Click - vitrine estática + sync com Olist Tiny",
   "scripts": {
-    "dev": "npx http-server -p 4321 -c-1 .",
+    "dev": "node scripts/dev-server.js",
     "get-token": "node scripts/get-token.js",
     "get-token:refresh": "node scripts/get-token.js --refresh",
     "sync-tiny": "node scripts/sync-tiny.js",
@@ -17,7 +17,8 @@
     "derivar-marcas:dry": "node scripts/derivar-marcas.js --dry-run",
     "otimizar-imagens": "node scripts/otimizar-imagens.js",
     "otimizar-imagens:force": "node scripts/otimizar-imagens.js --force",
-    "sync-site": "node scripts/enrich-produtos.js"
+    "sync-site": "node scripts/enrich-produtos.js",
+    "dev:estatico": "npx http-server -p 4321 -c-1 ."
   },
   "engines": {
     "node": ">=18"

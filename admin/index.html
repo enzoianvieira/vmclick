@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Entrar | Painel VM Click</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/img/brand/favicon-32.png">
+<link rel="stylesheet" href="../assets/css/fonts.css">
+<link rel="stylesheet" href="../assets/css/tokens.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+
+<main class="login">
+  <div class="login__caixa">
+    <img class="login__logo" src="../assets/img/brand/logo-lockup.png" alt="VM Click">
+
+    <div>
+      <h1>Painel da loja</h1>
+      <p class="ajuda">Acesso restrito à equipe da VM Click.</p>
+    </div>
+
+    <div class="aviso aviso--erro" id="erro" hidden></div>
+
+    <form id="form-login" autocomplete="on">
+      <div class="campo">
+        <label for="usuario">Usuário</label>
+        <input id="usuario" name="usuario" type="text" autocomplete="username" required autofocus>
+      </div>
+      <div class="campo">
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="bt bt--principal" type="submit" id="entrar" style="height:44px">Entrar</button>
+    </form>
+
+    <p class="ajuda">
+      Esqueceu a senha? Ela não fica guardada em lugar nenhum do sistema.
+      É preciso gerar uma nova com quem administra o servidor.
+    </p>
+  </div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+(function () {
+  var form = document.getElementById('form-login');
+  var erro = document.getElementById('erro');
+  var botao = document.getElementById('entrar');
+
+  /* já tem sessão? vai direto para o painel */
+  API.sessao().then(function (s) { if (s) location.replace('painel.html'); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    erro.hidden = true;
+    botao.disabled = true;
+    botao.textContent = 'Entrando…';
+
+    API.entrar(document.getElementById('usuario').value, document.getElementById('senha').value)
+      .then(function () { location.replace('painel.html'); })
+      .catch(function (err) {
+        erro.textContent = err.message;
+        erro.hidden = false;
+        botao.disabled = false;
+        botao.textContent = 'Entrar';
+        document.getElementById('senha').value = '';
+        document.getElementById('senha').focus();
+      });
+  });
+})();
+</script>
+</body>
+</html>

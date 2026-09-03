@@ -10,7 +10,7 @@
  *
  * Então o token rotacionado precisa de um lugar gravável. Aqui há dois modos:
  *
- *   1. Vercel KV / Upstash Redis, se as variáveis estiverem configuradas.
+ *   1. Upstash Redis (KV_REST_API_* ou UPSTASH_REDIS_REST_*), se configurado.
  *      É o modo recomendado em produção.
  *   2. Arquivo local, para desenvolvimento na máquina.
  *
@@ -24,8 +24,37 @@ const path = require('path');
 const CHAVE = 'vmclick:olist:refresh_token';
 const ARQUIVO_LOCAL = path.join(__dirname, '..', '.olist-token.json');
 
+/* O nome dessas variáveis muda conforme por onde a integração foi criada, e a
+   Vercel ainda permite escolher um prefixo na instalação. Em vez de adivinhar,
+   procura primeiro os nomes conhecidos e, se não achar, qualquer par
+   *_REST_API_URL / *_REST_API_TOKEN com o mesmo prefixo. Assim funciona com
+   prefixo personalizado sem precisar mexer no código. */
+function credenciaisKV() {
+  const conhecidos = [
+    ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
+    ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+  ];
+  for (const [chaveUrl, chaveToken] of conhecidos) {
+    if (process.env[chaveUrl] && process.env[chaveToken]) {
+      return { url: process.env[chaveUrl], token: process.env[chaveToken] };
+    }
+  }
+
+  /* varredura por prefixo: STORAGE_REST_API_URL + STORAGE_REST_API_TOKEN */
+  for (const chave of Object.keys(process.env)) {
+    const m = chave.match(/^(.*)_REST_API_URL$/);
+    if (!m) continue;
+    const token = process.env[`${m[1]}_REST_API_TOKEN`];
+    if (process.env[chave] && token) {
+      return { url: process.env[chave], token };
+    }
+  }
+
+  return null;
+}
+
 function temKV() {
-  return Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  return Boolean(credenciaisKV());
 }
 
 function podeGravarLocal() {
@@ -33,10 +62,17 @@ function podeGravarLocal() {
   return !process.env.VERCEL;
 }
 
-async function kv(comando) {
-  const res = await fetch(`${process.env.KV_REST_API_URL}/${comando.join('/')}`, {
-    headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
-  });
+/* `valor` vai no corpo, não na URL: o refresh token tem ~740 caracteres e
+   colocá-lo no caminho arrisca esbarrar em limite de tamanho de URL e em
+   diferenças de codificação entre proxies. */
+async function kv(comando, valor) {
+  const cred = credenciaisKV();
+  const opcoes = { headers: { Authorization: `Bearer ${cred.token}` } };
+  if (valor !== undefined) {
+    opcoes.method = 'POST';
+    opcoes.body = valor;
+  }
+  const res = await fetch(`${cred.url}/${comando.join('/')}`, opcoes);
   if (!res.ok) throw new Error(`KV respondeu ${res.status}`);
   return res.json();
 }
@@ -68,7 +104,7 @@ async function gravarRefreshToken(token) {
 
   if (temKV()) {
     try {
-      await kv(['set', CHAVE, encodeURIComponent(token)]);
+      await kv(['set', CHAVE], token);
       return { onde: 'kv' };
     } catch (e) { /* tenta o arquivo */ }
   }

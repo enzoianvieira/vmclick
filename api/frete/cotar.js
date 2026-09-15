@@ -93,9 +93,16 @@ module.exports = async (req, res) => {
        enquanto a pessoa mexe no carrinho, e a cotação não muda nesse intervalo. */
     res.setHeader('Cache-Control', 'private, max-age=300');
 
+    /* Nenhuma transportadora atendeu e o CEP não é da área de entrega própria:
+       sobra só a retirada na loja, em Curitiba, que não serve para quem está
+       em outro estado. A tela precisa saber disso para oferecer o orçamento
+       pelo WhatsApp em vez de fingir que há uma opção. */
+    const semTransportadora = !r.opcoes.length && !r.local;
+
     return res.status(200).json({
       opcoes,
       excedeLimite: r.excedeLimite,
+      semTransportadora,
       pesoEstimado: r.estimado,
     });
   } catch (e) {

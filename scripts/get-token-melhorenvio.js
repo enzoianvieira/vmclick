@@ -34,6 +34,10 @@ const ENV_PATH = path.join(ROOT, '.env');
 
 const MODE_REFRESH = process.argv.includes('--refresh');
 
+/* --code=<codigo> pula a parte do navegador e troca direto. Serve quando a
+   autorizacao ja foi feita e voce so tem o codigo em maos. */
+const ARG_CODE = (process.argv.find((a) => a.startsWith('--code=')) || '').slice('--code='.length);
+
 /* Cotar precisa só disto. Emitir etiqueta, mais adiante, vai pedir também
    shipping-checkout, shipping-generate e shipping-print. */
 const SCOPE_PADRAO = 'shipping-calculate';
@@ -275,9 +279,15 @@ async function runAuthCode() {
   });
   const authUrl = `${AUTH_URL}?${params.toString()}`;
 
-  const code = ehLocal(REDIRECT_URI)
-    ? await pegarCodigoEscutando(authUrl, state)
-    : await pegarCodigoColado(authUrl, state);
+  let code = ARG_CODE;
+  if (code) {
+    console.log(`Ambiente: ${BASE}`);
+    console.log('Usando o código passado em --code (nenhum navegador é aberto).');
+  } else {
+    code = ehLocal(REDIRECT_URI)
+      ? await pegarCodigoEscutando(authUrl, state)
+      : await pegarCodigoColado(authUrl, state);
+  }
 
   console.log('');
   console.log('Trocando o código por tokens...');

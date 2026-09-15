@@ -149,7 +149,16 @@
        própria continuam valendo - o aviso entra junto das opções que sobraram,
        não no lugar delas. */
     var aviso = '';
-    if (dados.excedeLimite) {
+    if (dados.semTransportadora) {
+      aviso =
+        '<div class="frete-aviso">' +
+          '<b>Nenhuma transportadora atende este CEP.</b>' +
+          '<p>A entrega para esta região precisa ser combinada caso a caso. ' +
+          'Fale com a loja que a equipe cota para você.</p>' +
+          '<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="' +
+            window.VM.EMPRESA.whatsapp + '">Pedir orçamento de frete</a>' +
+        '</div>';
+    } else if (dados.excedeLimite) {
       aviso =
         '<div class="frete-aviso">' +
           '<b>Este carrinho passa do limite das transportadoras.</b>' +

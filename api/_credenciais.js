@@ -130,6 +130,57 @@ async function gravarToken(chave, token) {
   return { onde: 'nenhum' };
 }
 
+/* ---------------------------------------------------------------------------
+   Guarda genérica de objeto JSON, na mesma prateleira.
+
+   O access_token do Melhor Envio dura 30 dias, mas cada renovação ROTACIONA o
+   refresh token. Renovar a cada partida a frio da função gastaria um refresh
+   token por vez, e qualquer instância que ficasse para trás levaria 401.
+   Guardando o access_token junto com o vencimento, a renovação passa a ser
+   rara - que é o comportamento pretendido.
+   --------------------------------------------------------------------------- */
+
+async function lerJson(chave) {
+  if (temKV()) {
+    try {
+      const r = await kv(['get', chave]);
+      if (r && r.result) return JSON.parse(r.result);
+    } catch (e) { /* cai para o ambiente abaixo */ }
+  }
+
+  if (podeGravarLocal()) {
+    try {
+      const arquivo = ARQUIVOS_POR_CHAVE[chave];
+      if (arquivo && fs.existsSync(arquivo)) return JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    } catch (e) { /* idem */ }
+  }
+
+  return null;
+}
+
+async function gravarJson(chave, objeto) {
+  const texto = JSON.stringify({ ...objeto, em: new Date().toISOString() });
+
+  if (temKV()) {
+    try {
+      await kv(['set', chave], texto);
+      return { onde: 'kv' };
+    } catch (e) { /* tenta o arquivo */ }
+  }
+
+  if (podeGravarLocal()) {
+    try {
+      const arquivo = ARQUIVOS_POR_CHAVE[chave];
+      if (arquivo) {
+        fs.writeFileSync(arquivo, texto);
+        return { onde: 'arquivo' };
+      }
+    } catch (e) { /* segue */ }
+  }
+
+  return { onde: 'nenhum' };
+}
+
 /** Atalhos do Olist, que era o único usuário disto antes do frete. */
 function lerRefreshToken() {
   return lerToken(CHAVE, process.env.TINY_REFRESH_TOKEN);
@@ -143,4 +194,9 @@ function armazenamentoDisponivel() {
   return temKV() || podeGravarLocal();
 }
 
-module.exports = { lerRefreshToken, gravarRefreshToken, lerToken, gravarToken, armazenamentoDisponivel };
+module.exports = {
+  lerRefreshToken, gravarRefreshToken,
+  lerToken, gravarToken,
+  lerJson, gravarJson,
+  armazenamentoDisponivel,
+};

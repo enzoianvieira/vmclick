@@ -171,11 +171,26 @@ function atendeEntregaLocal(cep) {
 
 let tokenCache = { valor: null, expiraEm: 0 };
 
+/* Margem antes do vencimento: o token não é usado até o último segundo, senão
+   uma requisição longa esbarra na virada. */
+const FOLGA_MS = 5 * 60 * 1000;
+
 async function obterToken() {
-  if (tokenCache.valor && Date.now() < tokenCache.expiraEm - 60_000) return tokenCache.valor;
+  if (tokenCache.valor && Date.now() < tokenCache.expiraEm - FOLGA_MS) return tokenCache.valor;
 
   const { MELHORENVIO_CLIENT_ID, MELHORENVIO_CLIENT_SECRET } = process.env;
-  const refresh = await credenciais.lerToken(CHAVE_TOKEN, process.env.MELHORENVIO_REFRESH_TOKEN);
+
+  /* Guardado: access_token ainda válido dispensa renovar. Importa porque cada
+     renovação queima o refresh token atual, e em serverless cada partida a
+     frio começa com a memória vazia. */
+  const guardado = await credenciais.lerJson(CHAVE_TOKEN);
+  if (guardado && guardado.access_token && guardado.expira_em > Date.now() + FOLGA_MS) {
+    tokenCache = { valor: guardado.access_token, expiraEm: guardado.expira_em };
+    return tokenCache.valor;
+  }
+
+  const refresh = (guardado && guardado.refresh_token)
+    || process.env.MELHORENVIO_REFRESH_TOKEN;
 
   if (!MELHORENVIO_CLIENT_ID || !MELHORENVIO_CLIENT_SECRET || !refresh) {
     throw new ErroFrete(503, 'Cotação de frete não configurada no servidor');
@@ -193,22 +208,30 @@ async function obterToken() {
   });
 
   if (!res.ok) {
+    /* 401 aqui quase sempre é refresh token já gasto: como ele rotaciona a
+       cada uso, uma cópia antiga em variável de ambiente para de valer assim
+       que outro ambiente renova. A mensagem diz o que fazer. */
+    if (res.status === 401) {
+      throw new ErroFrete(503,
+        'Token do Melhor Envio inválido ou já rotacionado. Rode npm run get-token-frete e atualize o refresh token.');
+    }
     throw new ErroFrete(503, `Melhor Envio recusou a renovação do token (${res.status})`);
   }
 
   const json = await res.json();
   if (!json.access_token) throw new ErroFrete(503, 'Melhor Envio não devolveu access_token');
 
-  /* O refresh token rotaciona: sem gravar o novo, a cotação morre quando o
-     atual expirar - o mesmo tropeço que já houve com o Olist. */
-  if (json.refresh_token && json.refresh_token !== refresh) {
-    await credenciais.gravarToken(CHAVE_TOKEN, json.refresh_token);
-  }
+  const expiraEm = Date.now() + (Number(json.expires_in) || 3600) * 1000;
 
-  tokenCache = {
-    valor: json.access_token,
-    expiraEm: Date.now() + (Number(json.expires_in) || 3600) * 1000,
-  };
+  /* Grava os dois juntos: o refresh rotacionado, que sem isto se perde, e o
+     access_token, que evita renovar de novo na próxima partida a frio. */
+  await credenciais.gravarJson(CHAVE_TOKEN, {
+    refresh_token: json.refresh_token || refresh,
+    access_token: json.access_token,
+    expira_em: expiraEm,
+  });
+
+  tokenCache = { valor: json.access_token, expiraEm };
   return tokenCache.valor;
 }
 

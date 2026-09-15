@@ -48,6 +48,7 @@
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/cart.js"></script>
+<script src="assets/js/frete.js"></script>
 <script src="assets/js/catalog.js"></script>
 <script>
 document.addEventListener('vm:ready', function () {
@@ -70,6 +71,7 @@ document.addEventListener('vm:ready', function () {
   function resumo() {
     var linhas = VMCart.linhas();
     var frete = VMCart.frete();
+    var escolhida = VMFrete.selecionada();
     return '' +
     '<aside class="summary">' +
       '<h3>Resumo</h3>' +
@@ -78,7 +80,13 @@ document.addEventListener('vm:ready', function () {
       }).join('') +
       '<hr class="divider">' +
       '<div class="summary__row"><span>Subtotal</span><b>' + VM.money(VMCart.subtotal()) + '</b></div>' +
-      '<div class="summary__row"><span>Frete</span><b>' + (frete === 0 ? 'Grátis' : VM.money(frete)) + '</b></div>' +
+      '<div class="summary__row"><span>Frete' +
+        (escolhida ? '<br><small class="subtle">' + escolhida.servico + '</small>' : '') +
+        '</span><b>' +
+          (escolhida && escolhida.tipo === 'combinar'
+            ? 'A combinar'
+            : (frete === 0 ? 'Grátis' : VM.money(frete))) + '</b></div>' +
+      (escolhida ? '' : '<p class="frete-nota">Frete estimado. Calcule pelo CEP no passo de entrega.</p>') +
       '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(VMCart.total()) + '</span></div>' +
       (pagamento === 'pix'
         ? '<p style="font-size:13px;color:var(--success);font-weight:600">' + VM.money(VMCart.total() * 0.95) + ' com 5% de desconto no Pix</p>'
@@ -107,18 +115,14 @@ document.addEventListener('vm:ready', function () {
   function painelEntrega() {
     return '<div class="panel stack-6">' +
       '<h3>Entrega</h3>' +
-      '<div class="stack">' +
-        '<label class="pay-opt is-sel"><input type="radio" name="entrega" value="entrega" checked>' +
-          VM.icon('caminhao') +
-          '<span><span class="pay-opt__t">Entrega VM Click - Curitiba e região</span>' +
-          '<span class="pay-opt__d">1 a 3 dias úteis · grátis acima de ' + VM.money(VMCart.FRETE_GRATIS) + '</span></span></label>' +
-        '<label class="pay-opt"><input type="radio" name="entrega" value="retirada">' +
-          VM.icon('loja') +
-          '<span><span class="pay-opt__t">Retirar na loja - Portão</span>' +
-          '<span class="pay-opt__d">R. Amadeu do Amaral, 1602 · pronto em 2 horas · sem custo</span></span></label>' +
-      '</div>' +
+      '<p class="muted" style="font-size:14px;margin-top:-8px">' +
+        'Informe o CEP para ver as formas de entrega e o prazo.</p>' +
       '<div class="field-grid field-grid--2">' +
-        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" maxlength="9" placeholder="80000-000"><span class="err">Informe o CEP.</span></div>' +
+        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" maxlength="9" placeholder="80000-000" value="' + (VMFrete.cep() || '') + '"><span class="err">Informe o CEP.</span></div>' +
+        '<div class="field" style="align-self:end"><button class="btn btn--secondary" type="button" id="calcular-frete">Calcular frete</button></div>' +
+      '</div>' +
+      '<div id="frete-opcoes" class="stack"></div>' +
+      '<div class="field-grid field-grid--2">' +
         '<div class="field"><label for="rua">Endereço</label><input id="rua" placeholder="Rua, avenida…"></div>' +
         '<div class="field"><label for="numero">Número</label><input id="numero" placeholder="1602"></div>' +
         '<div class="field"><label for="compl">Complemento</label><input id="compl" placeholder="Apto, bloco, referência"></div>' +
@@ -200,10 +204,69 @@ document.addEventListener('vm:ready', function () {
     });
 
     var cep = document.getElementById('cep');
-    if (cep) cep.addEventListener('input', function () {
-      var v = this.value.replace(/\D/g, '').slice(0, 8);
-      this.value = v.length > 5 ? v.slice(0, 5) + '-' + v.slice(5) : v;
+    if (cep) {
+      cep.addEventListener('input', function () {
+        this.value = VMFrete.formatarCep(this.value);
+      });
+      /* CEP completo já dispara a cotação: ninguém gosta de digitar e ainda
+         ter que clicar num botão. O botão fica para quem quer refazer. */
+      cep.addEventListener('input', function () {
+        if (this.value.replace(/\D/g, '').length === 8) calcularFrete();
+      });
+      if (cep.value.replace(/\D/g, '').length === 8) calcularFrete();
+    }
+
+    var btnFrete = document.getElementById('calcular-frete');
+    if (btnFrete) btnFrete.addEventListener('click', calcularFrete);
+  }
+
+  /* Cota o CEP digitado e redesenha as opções e o resumo. */
+  function calcularFrete() {
+    var campo = document.getElementById('cep');
+    var alvo = document.getElementById('frete-opcoes');
+    if (!campo || !alvo) return;
+
+    alvo.innerHTML = '<p class="frete-nota">Calculando frete…</p>';
+
+    VMFrete.cotar(campo.value).then(function (dados) {
+      VMFrete.montarSeletor(alvo, dados, { aoEscolher: atualizarResumo });
+      atualizarResumo();
+    }).catch(function (e) {
+      /* Cotação fora do ar não pode virar beco sem saída: sem uma alternativa
+         selecionável o pedido trava aqui e a venda se perde. A loja confirma
+         o valor depois, como já fazia antes de existir cotação automática. */
+      var combinar = {
+        id: 'combinar', tipo: 'combinar', transportadora: 'VM Click',
+        servico: 'Combinar entrega com a loja', preco: 0, prazo: null,
+        detalhe: 'A equipe confirma valor e prazo antes do envio',
+      };
+
+      alvo.innerHTML =
+        '<div class="frete-aviso"><b>Não deu para calcular o frete agora.</b>' +
+          '<p>' + (e && e.message ? e.message : 'Tente de novo em instantes.') + '</p></div>' +
+        '<div class="stack" style="margin-top:12px">' +
+          '<label class="pay-opt frete-opt is-sel">' +
+            '<input type="radio" name="frete-opcao" value="combinar" checked>' +
+            VM.icon('atendente') +
+            '<span><span class="pay-opt__t">' + combinar.servico + '</span>' +
+            '<span class="pay-opt__d">' + combinar.detalhe + '</span></span>' +
+            '<b class="frete-opt__preco">A combinar</b>' +
+          '</label>' +
+        '</div>';
+
+      VMFrete.escolher(combinar);
+      atualizarResumo();
     });
+  }
+
+  /* Só o resumo é redesenhado: recriar o painel inteiro faria o campo de CEP
+     perder o foco no meio da digitação. */
+  function atualizarResumo() {
+    var antigo = document.querySelector('.summary');
+    if (!antigo) return;
+    var novo = document.createElement('div');
+    novo.innerHTML = resumo();
+    antigo.replaceWith(novo.firstChild);
   }
 
   function validar() {
@@ -221,8 +284,14 @@ document.addEventListener('vm:ready', function () {
       if (invalido && ok) { el.focus(); ok = false; }
     });
 
-    if (!ok) VM.toast('Confira os campos destacados.', 'warn');
-    return ok;
+    if (!ok) { VM.toast('Confira os campos destacados.', 'warn'); return false; }
+
+    if (passo === 2 && !VMFrete.selecionada()) {
+      VM.toast('Calcule o frete e escolha uma forma de entrega.', 'warn');
+      return false;
+    }
+
+    return true;
   }
 
   function concluir() {
@@ -246,6 +315,7 @@ document.addEventListener('vm:ready', function () {
         '</div>' +
       '</div>';
 
+    VMFrete.limpar();
     VMCart.limpar();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

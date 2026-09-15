@@ -24,4 +24,8 @@ Thumbs.db
 # Screenshots enviados pelo usuário na conversa
 image.png
 image*.png
+
+# Tokens rotacionados guardados em arquivo (modo de desenvolvimento).
+# Em produção vão para o KV; aqui nunca podem entrar no repositório.
 .olist-token.json
+.melhorenvio-token.json

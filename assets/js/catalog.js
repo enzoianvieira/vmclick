@@ -745,7 +745,7 @@
           '<button class="btn btn--outline" type="submit">Calcular</button>' +
         '</form>' +
         '<div id="cep-result"></div>' +
-        '<p class="mono subtle">Simulação de demonstração. O cálculo real de frete entra na fase 2.</p>' +
+        '<p class="mono subtle">Valor e prazo cotados na hora. O prazo começa a contar depois da postagem.</p>' +
       '</div>' +
 
       '<ul class="pdp__points">' +
@@ -840,22 +840,46 @@
       e.preventDefault();
       var v = VM.qs('#cep').value.replace(/\D/g, '');
       var res = VM.qs('#cep-result');
+
       if (v.length !== 8) {
         res.innerHTML = '<p class="err" style="display:flex;color:var(--danger);font-size:13px;font-weight:600">' +
           'Informe os 8 dígitos do CEP.</p>';
         return;
       }
-      var curitiba = v.indexOf('8') === 0;
-      res.innerHTML =
-        '<div class="cep-result">' +
-          '<div class="cep-result__row"><span>Retirada na loja (Portão)</span><b>Grátis · hoje</b></div>' +
-          (curitiba
-            ? '<div class="cep-result__row"><span>Entrega VM Click - Curitiba e região</span><b>' + VM.money(24.90) + ' · 1 a 3 dias úteis</b></div>'
-            : '<div class="cep-result__row"><span>Transportadora</span><b>' + VM.money(58.40) + ' · 5 a 9 dias úteis</b></div>') +
-          '<div class="cep-result__row"><span>Acima de ' + VM.money(window.VMCart.FRETE_GRATIS) + '</span><b>Frete grátis</b></div>' +
-        '</div>';
-      /* o resultado nasce depois do boot: entra em cascata como as demais listas */
-      if (window.VMAnim && VMAnim.listas) VMAnim.listas(res);
+
+      if (!window.VMFrete) return;
+
+      /* Cota este produto na quantidade escolhida, não o carrinho: aqui a
+         pessoa ainda está decidindo se compra. */
+      var qtdEl = VM.qs('#pdp-qtd');
+      var qtd = qtdEl ? Math.max(1, parseInt(qtdEl.value, 10) || 1) : 1;
+
+      res.innerHTML = '<p class="frete-nota">Calculando frete…</p>';
+
+      VMFrete.cotarItens(v, [{ sku: p.sku, qtd: qtd }], p.preco * qtd).then(function (dados) {
+        if (!dados.opcoes.length) {
+          res.innerHTML = '<p class="frete-nota">Nenhuma forma de entrega para este CEP. Fale com a loja.</p>';
+          return;
+        }
+        res.innerHTML =
+          '<div class="cep-result">' +
+            dados.opcoes.map(function (o) {
+              var valor = o.preco > 0 ? VM.money(o.preco) : 'Grátis';
+              var prazo = o.prazo ? ' · ' + o.prazo + ' dia(s) útil(eis)' : (o.tipo === 'retirada' ? ' · hoje' : '');
+              var nome = o.servico + (o.tipo === 'transportadora' && o.transportadora ? ' (' + o.transportadora + ')' : '');
+              return '<div class="cep-result__row"><span>' + nome + '</span><b>' + valor + prazo + '</b></div>';
+            }).join('') +
+          '</div>' +
+          (dados.excedeLimite
+            ? '<p class="frete-nota">Nesta quantidade o pedido passa do limite das transportadoras. ' +
+              'Fale com a loja para um orçamento de entrega.</p>'
+            : '');
+        /* o resultado nasce depois do boot: entra em cascata como as demais listas */
+        if (window.VMAnim && VMAnim.listas) VMAnim.listas(res);
+      }).catch(function (err) {
+        res.innerHTML = '<p class="frete-nota">' +
+          (err && err.message ? err.message : 'Não deu para calcular agora.') + ' Tente de novo em instantes.</p>';
+      });
     });
 
     /* avaliações */

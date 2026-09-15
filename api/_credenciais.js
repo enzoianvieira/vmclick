@@ -24,6 +24,13 @@ const path = require('path');
 const CHAVE = 'vmclick:olist:refresh_token';
 const ARQUIVO_LOCAL = path.join(__dirname, '..', '.olist-token.json');
 
+/* Outras integrações que também rotacionam token guardam aqui, cada uma com a
+   sua chave e o seu arquivo local. Ver lerToken/gravarToken no final. */
+const ARQUIVOS_POR_CHAVE = {
+  [CHAVE]: ARQUIVO_LOCAL,
+  'vmclick:melhorenvio:refresh_token': path.join(__dirname, '..', '.melhorenvio-token.json'),
+};
+
 /* O nome dessas variáveis muda conforme por onde a integração foi criada, e a
    Vercel ainda permite escolher um prefixo na instalação. Em vez de adivinhar,
    procura primeiro os nomes conhecidos e, se não achar, qualquer par
@@ -77,46 +84,58 @@ async function kv(comando, valor) {
   return res.json();
 }
 
-/** Último refresh token válido conhecido. */
-async function lerRefreshToken() {
+/** Último refresh token válido conhecido de uma integração qualquer. */
+async function lerToken(chave, padraoEnv) {
   if (temKV()) {
     try {
-      const r = await kv(['get', CHAVE]);
+      const r = await kv(['get', chave]);
       if (r && r.result) return r.result;
     } catch (e) { /* cai para o ambiente abaixo */ }
   }
 
   if (podeGravarLocal()) {
     try {
-      if (fs.existsSync(ARQUIVO_LOCAL)) {
-        const j = JSON.parse(fs.readFileSync(ARQUIVO_LOCAL, 'utf8'));
+      const arquivo = ARQUIVOS_POR_CHAVE[chave];
+      if (arquivo && fs.existsSync(arquivo)) {
+        const j = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
         if (j && j.refresh_token) return j.refresh_token;
       }
     } catch (e) { /* idem */ }
   }
 
-  return process.env.TINY_REFRESH_TOKEN || '';
+  return padraoEnv || '';
 }
 
-/** Guarda o token rotacionado. Sem isso a conexão morre no dia seguinte. */
-async function gravarRefreshToken(token) {
+/** Guarda o token rotacionado. Sem isso a conexão morre quando ele expira. */
+async function gravarToken(chave, token) {
   if (!token) return { onde: 'nenhum' };
 
   if (temKV()) {
     try {
-      await kv(['set', CHAVE], token);
+      await kv(['set', chave], token);
       return { onde: 'kv' };
     } catch (e) { /* tenta o arquivo */ }
   }
 
   if (podeGravarLocal()) {
     try {
-      fs.writeFileSync(ARQUIVO_LOCAL, JSON.stringify({ refresh_token: token, em: new Date().toISOString() }, null, 2));
-      return { onde: 'arquivo' };
+      const arquivo = ARQUIVOS_POR_CHAVE[chave];
+      if (arquivo) {
+        fs.writeFileSync(arquivo, JSON.stringify({ refresh_token: token, em: new Date().toISOString() }, null, 2));
+        return { onde: 'arquivo' };
+      }
     } catch (e) { /* segue */ }
   }
 
   return { onde: 'nenhum' };
+}
+
+/** Atalhos do Olist, que era o único usuário disto antes do frete. */
+function lerRefreshToken() {
+  return lerToken(CHAVE, process.env.TINY_REFRESH_TOKEN);
+}
+function gravarRefreshToken(token) {
+  return gravarToken(CHAVE, token);
 }
 
 /** Diz se existe lugar para guardar o token rotacionado. */
@@ -124,4 +143,4 @@ function armazenamentoDisponivel() {
   return temKV() || podeGravarLocal();
 }
 
-module.exports = { lerRefreshToken, gravarRefreshToken, armazenamentoDisponivel };
+module.exports = { lerRefreshToken, gravarRefreshToken, lerToken, gravarToken, armazenamentoDisponivel };

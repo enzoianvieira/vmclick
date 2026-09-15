@@ -43,10 +43,22 @@
   Cart.quantidade = function () {
     return Cart.itens.reduce(function (s, i) { return s + i.qtd; }, 0);
   };
+  /* Depois que o visitante cota o CEP, quem manda é a opção escolhida. Antes
+     disso vale a estimativa da entrega própria, que é o caso mais comum aqui
+     (a loja é de Curitiba) e evita mostrar "a calcular" no carrinho. */
   Cart.frete = function () {
     var sub = Cart.subtotal();
     if (sub === 0) return 0;
+
+    var escolhida = window.VMFrete && VMFrete.selecionada();
+    if (escolhida) return escolhida.preco;
+
     return sub >= FRETE_GRATIS ? 0 : FRETE_PADRAO;
+  };
+
+  /** true enquanto o frete ainda é estimativa, não cotação de CEP. */
+  Cart.freteEstimado = function () {
+    return !(window.VMFrete && VMFrete.selecionada());
   };
   Cart.total = function () { return Cart.subtotal() + Cart.frete(); };
   Cart.faltaFreteGratis = function () { return Math.max(0, FRETE_GRATIS - Cart.subtotal()); };

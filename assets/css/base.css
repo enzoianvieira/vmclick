@@ -33,8 +33,8 @@ h1, h2, h3, h4, h5 {
   text-wrap: balance;
 }
 h1 { font-size: var(--fs-h1); }
-h2 { font-size: var(--fs-h2); }
-h3 { font-size: var(--fs-h3); font-weight: var(--fw-semibold); }
+h2 { font-size: var(--fs-h2); line-height: var(--lh-heading); }
+h3 { font-size: var(--fs-h3); font-weight: var(--fw-semibold); line-height: var(--lh-heading); }
 h4 { font-size: var(--fs-h4); font-weight: var(--fw-semibold); line-height: var(--lh-snug); }
 p  { margin: 0; }
 
@@ -83,12 +83,16 @@ ul, ol { margin: 0; padding: 0; }
 .row     { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
 
 /* --- Cabeçalho de seção ------------------------------------------------ */
-.sec-head { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-10); }
+.sec-head { display: flex; flex-direction: column; gap: var(--sp-4); margin-bottom: var(--sp-10); }
 .sec-head--center { align-items: center; text-align: center; }
 .sec-head--split {
   flex-direction: row; align-items: flex-end; justify-content: space-between;
   flex-wrap: wrap; gap: var(--sp-6);
 }
+/* Na variante --split o eyebrow e o título ficam dentro de uma coluna própria,
+   fora do alcance do gap do .sec-head. Sem isto a cedilha do eyebrow encosta
+   no título. */
+.sec-head > div { display: flex; flex-direction: column; gap: var(--sp-3); }
 .sec-head p { color: var(--text-muted); max-width: 62ch; font-size: var(--fs-lg); }
 
 .eyebrow {

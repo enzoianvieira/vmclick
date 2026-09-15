@@ -3,18 +3,13 @@
    ========================================================================== */
 
 /* ==========================================================================
-   HERO (home) - cena three.js de circuito + conteúdo
+   HERO (home) - conteúdo sobre gradiente
    ========================================================================== */
 .hero {
   position: relative; overflow: hidden;
   background: radial-gradient(120% 90% at 78% 8%, #0A403A 0%, #04211E 45%, #021513 100%);
   color: #fff; isolation: isolate;
 }
-.hero__canvas {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  z-index: 0; opacity: 0; transition: opacity 900ms var(--ease);
-}
-.hero__canvas.is-ready { opacity: 1; }
 .hero__grain {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background:
@@ -24,7 +19,7 @@
 .hero__inner {
   position: relative; z-index: 2;
   padding-block: clamp(72px, 12vh, 132px);
-  display: grid; gap: var(--sp-12); align-items: center;
+  display: grid; gap: var(--sp-12); align-items: start;
   grid-template-columns: 1fr;
   min-height: clamp(560px, 82vh, 820px);
 }
@@ -115,12 +110,12 @@
 /* ==========================================================================
    CATEGORIAS (home)
    ========================================================================== */
-/* Colunas fixas por faixa, não auto-fit: são 6 cards, e 3 ou 2 colunas fecham
-   a grade certinha (3+3 ou 2+2+2). Com auto-fit dava 4 colunas e sobravam
-   dois cards órfãos na última linha. */
+/* Colunas fixas por faixa, não auto-fit: duas colunas em qualquer tela larga.
+   Card maior dá respiro para o ícone e para a descrição, e a grade fecha
+   certinha em pares. Com auto-fit sobravam cards órfãos na última linha. */
 .cat-grid { display: grid; gap: var(--sp-5); grid-template-columns: 1fr; }
 @media (min-width: 620px)  { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .cat-grid { grid-template-columns: repeat(3, 1fr); gap: var(--sp-6); } }
+@media (min-width: 1024px) { .cat-grid { grid-template-columns: repeat(2, 1fr); gap: var(--sp-6); } }
 .cat-card {
   position: relative; display: flex; flex-direction: column; gap: var(--sp-3);
   padding: var(--sp-8) var(--sp-6); background: var(--surface);
@@ -137,6 +132,13 @@
 .cat-card__ico {
   width: 58px; height: 58px; color: var(--teal-700);
   transition: transform var(--dur-slow) var(--ease);
+}
+/* Em duas colunas o card fica largo: um pouco mais de respiro interno e um
+   ícone maior evitam que o conteúdo pareça perdido no canto. */
+@media (min-width: 1024px) {
+  .cat-card { padding: var(--sp-10) var(--sp-8); gap: var(--sp-4); }
+  .cat-card__ico { width: 68px; height: 68px; }
+  .cat-card p { font-size: var(--fs-base); max-width: 46ch; }
 }
 .cat-card:hover .cat-card__ico { transform: translateY(-3px) scale(1.05); }
 .cat-card h3 { font-size: var(--fs-h4); color: var(--text); }

@@ -1,4 +1,4 @@
-{
+﻿{
   "_instrucoes": [
     "Gerado automaticamente por fetch-categorias.js.",
     "\"slugs\" é a lista de categorias do site (uma por top-level do Olist).",
@@ -10,7 +10,7 @@
       "slug": "eletrica",
       "nome": "Elétrica",
       "curto": "Elétrica",
-      "icone": "p-disjuntor",
+      "icone": "p-raio",
       "desc": "Produtos da categoria Elétrica disponíveis em estoque.",
       "olistId": 908763929
     },

@@ -128,7 +128,7 @@
     fone: '(41) 3089-2453',
     cel: '(41) 99892-0006',
     endereco: 'R. Amadeu do Amaral, 1602 - Portão, Curitiba/PR',
-    horario: 'Segunda a sexta, 09:00 às 18:00',
+    horario: 'Segunda a sexta, 08:00 às 18:00 · Sábado, 08:00 às 13:00',
     whatsapp: 'https://api.whatsapp.com/send?phone=5541998920006&text=Vim%20do%20site%20e%20gostaria%20de%20um%20or%C3%A7amento',
     instagram: 'https://www.instagram.com/vmclick',
     facebook: 'https://pt-br.facebook.com/vmclick/',

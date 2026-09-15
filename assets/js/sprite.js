@@ -14,7 +14,6 @@
   <path d="M32 8a15 15 0 0 1 9 27v5H23v-5a15 15 0 0 1 9-27Z"/>
   <path d="M23 44h18M24 49h16"/>
   <path d="M27 53h10v2a5 5 0 0 1-10 0Z"/>
-  <path d="M27 30l3-8 2 6 2-6 3 8" stroke-width="1.25" opacity=".55"/>
 </symbol>
 <symbol id="p-luminaria" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect x="8" y="16" width="48" height="20" rx="3"/>
@@ -43,6 +42,10 @@
 </symbol>
 
 <!-- ELÉTRICA -->
+<symbol id="p-raio" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M36 6 16 36h13l-3 22 22-32H34l2-20Z"/>
+  <path d="M8 14h8M8 50h8" stroke-width="1.25" opacity=".45" stroke-dasharray="3 3"/>
+</symbol>
 <symbol id="p-disjuntor" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect x="20" y="12" width="24" height="40" rx="2"/>
   <path d="M20 22h-6M20 42h-6M44 22h6M44 42h6"/>
@@ -59,9 +62,9 @@
 <symbol id="p-tomada" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <rect x="12" y="12" width="40" height="40" rx="6"/>
   <circle cx="32" cy="32" r="13"/>
-  <circle cx="26" cy="30" r="2.4" fill="currentColor" stroke="none"/>
-  <circle cx="38" cy="30" r="2.4" fill="currentColor" stroke="none"/>
-  <circle cx="32" cy="39" r="2.4" fill="currentColor" stroke="none"/>
+  <circle cx="24.5" cy="31" r="2.6" fill="currentColor" stroke="none"/>
+  <circle cx="39.5" cy="31" r="2.6" fill="currentColor" stroke="none"/>
+  <circle cx="32" cy="34.6" r="2.6" fill="currentColor" stroke="none"/>
   <path d="M12 22H7M57 22h-5" stroke-width="1.25" opacity=".45" stroke-dasharray="3 3"/>
 </symbol>
 <symbol id="p-interruptor" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

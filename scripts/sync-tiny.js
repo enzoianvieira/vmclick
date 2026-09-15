@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * VM Click - Sync Olist ERP API v3 (OAuth2 Bearer) → data/produtos.js
  *
@@ -83,7 +83,7 @@ function toNumber(v, fallback = 0) {
 // -------- Categoria: sem info na listagem, cai no fallback --------
 const FALLBACK_CAT = 'utilidades';
 const CAT_ICONE = {
-  eletrica: 'p-disjuntor',
+  eletrica: 'p-raio',
   iluminacao: 'p-lampada',
   hidraulica: 'p-registro',
   utilidades: 'p-alicate',

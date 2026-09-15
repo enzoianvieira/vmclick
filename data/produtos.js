@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    VM Click - catálogo sincronizado do Olist ERP (API v3)
    --------------------------------------------------------------------------
    ARQUIVO GERADO POR scripts/enrich-produtos.js — NÃO EDITE À MÃO.
@@ -12,7 +12,7 @@ window.VM_CATEGORIAS = [
     slug: "eletrica",
     nome: "Elétrica",
     curto: "Elétrica",
-    icone: "p-disjuntor",
+    icone: "p-raio",
     desc: "Produtos da categoria Elétrica disponíveis em estoque."
   },
   {

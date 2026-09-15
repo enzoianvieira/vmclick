@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * VM Click - Enriquece produtos com detalhe completo do Olist ERP
  *
@@ -222,7 +222,7 @@ function loadCategorias() {
 }
 
 const ICONE_POR_SLUG = {
-  eletrica: 'p-disjuntor',
+  eletrica: 'p-raio',
   iluminacao: 'p-lampada',
   hidraulica: 'p-registro',
   utilidades: 'p-alicate',

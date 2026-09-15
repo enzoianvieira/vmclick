@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * VM Click - Baixa árvore de categorias do Olist e gera:
  *   - scripts/categorias-olist.json    → árvore bruta (referência)
@@ -48,7 +48,7 @@ if (!TOKEN) {
 
 // -------- Icone/descrição por keyword do nome da top-level --------
 const ICON_RULES = [
-  { match: /el[eé]tric/i, icone: 'p-disjuntor' },
+  { match: /el[eé]tric/i, icone: 'p-raio' },
   { match: /ilumina|l[aâ]mpada|led/i, icone: 'p-lampada' },
   { match: /hidr[aá]ulic|tubo|cano/i, icone: 'p-registro' },
   { match: /pintura|tinta/i, icone: 'p-tinta' },

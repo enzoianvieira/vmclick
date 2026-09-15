@@ -93,6 +93,9 @@
   --fs-price:   1.75rem;  /* 28 */
 
   --lh-tight:   1.15;
+  /* Títulos de duas linhas com 1.15 ficam colados; 1.28 dá respiro sem
+     soltar demais. O h1 do hero tem line-height próprio e não usa este. */
+  --lh-heading: 1.28;
   --lh-snug:    1.3;
   --lh-normal:  1.6;
   --ls-tight:  -0.02em;

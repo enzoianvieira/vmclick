@@ -821,3 +821,137 @@
   .cc, .cc__brilho { animation: none; }
   .cc__giro { transition: none; }
 }
+
+/* --------------------------------------------------------------------------
+   Checkout - passo de entrega (finalizar.html + assets/js/frete.js)
+   Dois cartões: "onde receber" (CEP + endereço) e "como receber" (opções,
+   que só aparecem com o endereço completo).
+   -------------------------------------------------------------------------- */
+.checkout-etapa { display: grid; gap: var(--sp-5); }
+.panel__cab h3 { margin: 0; }
+.panel__cab p { margin: 4px 0 0; font-size: var(--fs-sm); }
+
+.cep-linha { display: flex; align-items: flex-end; gap: var(--sp-4); flex-wrap: wrap; }
+.cep-linha .field { width: 200px; }
+.cep-linha__ajuda { font-size: var(--fs-sm); font-weight: var(--fw-medium); padding-bottom: 12px; }
+
+.end-resumo {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: 14px 16px; border-radius: var(--r-md); background: var(--bg-subtle);
+}
+.end-resumo[hidden] { display: none; }
+.end-resumo > svg { width: 22px; height: 22px; color: var(--teal-700); flex: none; }
+.end-resumo__texto { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.end-resumo__texto b { color: var(--text); font-size: 15px; }
+.end-resumo__texto span { color: var(--text-muted); font-size: var(--fs-sm); }
+
+.frete-espera {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3);
+  padding: var(--sp-5); border: 1px dashed var(--border-strong); border-radius: var(--r-md);
+  color: var(--text-muted); font-size: var(--fs-sm); margin: 0;
+}
+.frete-espera p { margin: 0; }
+.frete-espera .btn svg { width: 18px; height: 18px; }
+
+.frete-grupo {
+  margin: 0 0 10px; font-size: 12px; font-weight: var(--fw-bold);
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+}
+.frete-lista + .frete-grupo, .frete-aviso + .frete-grupo, .frete-barra + .frete-grupo { margin-top: var(--sp-5); }
+.frete-aviso + .frete-grupo { margin-top: var(--sp-5); }
+.frete-lista { display: grid; gap: 10px; }
+
+.frete-op {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.frete-op:hover { border-color: var(--teal-400); }
+.frete-op.is-sel { border-color: var(--teal-600); box-shadow: inset 0 0 0 1px var(--teal-600); background: var(--teal-50); }
+.frete-op input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--teal-700); }
+.frete-op__corpo { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.frete-op__topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.frete-op__nome { font-size: 15px; color: var(--text); }
+.frete-op__extra { font-size: 13px; color: var(--text-muted); }
+.frete-op__chega { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--teal-900); }
+.frete-op__det { font-size: 13px; color: var(--text-muted); }
+.frete-op__det b { color: var(--text); }
+.frete-op__preco { font-size: 16px; white-space: nowrap; color: var(--text); }
+.frete-op__preco.is-gratis { color: var(--success); }
+
+.frete-selo {
+  font-size: 11px; font-weight: var(--fw-bold); letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 99px; background: var(--teal-100); color: var(--teal-900);
+}
+.frete-selo--barato { background: var(--success-bg); color: var(--success); }
+
+/* "Precisa em até 24h?" - não é opção selecionável, é atalho para o WhatsApp */
+.frete-op--link { text-decoration: none; color: inherit; border-style: dashed; }
+.frete-op--link:hover { background: var(--bg-subtle); }
+.frete-op__icone { width: 20px; display: grid; place-items: center; flex: none; }
+.frete-op__icone svg { width: 20px; height: 20px; color: var(--teal-700); }
+.frete-op__acao { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--teal-700); white-space: nowrap; }
+
+.frete-barra { display: grid; gap: 6px; margin: 0 0 12px; }
+.frete-barra__trilho { display: block; height: 6px; border-radius: 99px; background: var(--n-100); overflow: hidden; }
+.frete-barra__trilho > span { display: block; height: 100%; background: var(--teal-700); border-radius: 99px; }
+
+.frete-info {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: var(--sp-4);
+  padding: 12px 14px; border-radius: var(--r-md); background: var(--warning-bg); color: #6A3D06;
+}
+.frete-info svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.frete-info p { margin: 0; font-size: 13px; line-height: 1.5; }
+
+/* esqueleto enquanto a cotação não volta */
+.frete-op--esqueleto { cursor: default; }
+.frete-op--esqueleto:hover { border-color: var(--border); }
+.sk {
+  display: block; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--n-100) 25%, var(--n-50) 50%, var(--n-100) 75%);
+  background-size: 200% 100%; animation: skBrilho 1.2s ease-in-out infinite;
+}
+.sk--fino { height: 10px; }
+.sk--radio { width: 20px; height: 20px; border-radius: 50%; flex: none; }
+@keyframes skBrilho { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+@media (max-width: 600px) {
+  .frete-op { align-items: flex-start; padding: 14px; gap: 12px; }
+  .frete-op input { margin-top: 2px; }
+  .frete-op--link { flex-wrap: wrap; }
+  .frete-op--link .frete-op__acao { width: 100%; padding-left: 32px; }
+  .cep-linha .field { width: 100%; }
+  .cep-linha__ajuda { padding-bottom: 0; }
+}
+
+/* passos já feitos viram botão de voltar */
+.step--link { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.step--link:hover .step__t { color: var(--teal-700); text-decoration: underline; }
+
+/* ações do checkout: no celular, barra fixa com o total */
+.checkout-acoes { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); margin-top: var(--sp-6); }
+.checkout-acoes__total { display: none; }
+@media (max-width: 979px) {
+  .checkout-acoes {
+    position: sticky; bottom: 0; z-index: 20;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: 0 -6px 18px rgba(4, 40, 37, .08); padding: 12px 16px;
+  }
+  .checkout-acoes > .btn--ghost { display: none; }
+  .checkout-acoes__total { display: flex; flex-direction: column; }
+  .checkout-acoes__total small { font-size: 12px; color: var(--text-muted); }
+  .checkout-acoes__total b { font-family: var(--font-display); font-size: 20px; color: var(--text); }
+  .checkout-acoes .btn--lg { padding-inline: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+  .frete-op { transition: none; }
+}
+
+/* No checkout do celular a barra fixa ocupa o rodapé: o botão do WhatsApp
+   sobe para não cobrir o "Continuar". */
+@media (max-width: 979px) {
+  .woocommerce-checkout .wa-fab { bottom: 96px; }
+}

@@ -152,18 +152,29 @@ function montarPacote(itens) {
    Entrega própria e retirada
    ========================================================================== */
 
-/* Faixas de CEP atendidas pela entrega da própria loja. Curitiba vai de
-   80000-000 a 82999-999; a região metropolitana ocupa a faixa 83000-000 a
-   83800-999. Dá para sobrescrever em FRETE_CEP_LOCAL, no formato
-   "80000000-82999999,83000000-83800999". */
-const CEPS_LOCAIS = (process.env.FRETE_CEP_LOCAL || '80000000-82999999,83000000-83800999')
-  .split(',')
-  .map((faixa) => faixa.split('-').map((n) => parseInt(n.trim(), 10)))
-  .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
+/* Faixas de CEP no formato "80000000-82999999,83000000-83800999". */
+function faixas(texto) {
+  return String(texto)
+    .split(',')
+    .map((faixa) => faixa.split('-').map((n) => parseInt(n.trim(), 10)))
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
+}
+
+function dentro(cep, lista) {
+  const n = parseInt(cep, 10);
+  return lista.some(([a, b]) => n >= a && n <= b);
+}
+
+/* Onde a loja faz entrega em até 24h, cotada pelo WhatsApp: Curitiba
+   (80000-000 a 82999-999) e região metropolitana (83000-000 a 83800-999). */
+const CEPS_LOCAIS = faixas(process.env.FRETE_CEP_LOCAL || '80000000-82999999,83000000-83800999');
+
+/* Onde vale a entrega grátis da própria loja: só Curitiba, decisão da VM
+   Click (out/2026) - a região metropolitana fica de fora. */
+const CEPS_GRATIS = faixas(process.env.FRETE_CEP_GRATIS || '80000000-82999999');
 
 function atendeEntregaLocal(cep) {
-  const n = parseInt(cep, 10);
-  return CEPS_LOCAIS.some(([a, b]) => n >= a && n <= b);
+  return dentro(cep, CEPS_LOCAIS);
 }
 
 /* ==========================================================================
@@ -362,43 +373,51 @@ async function cotar(cepDestino, itens) {
    Modalidades de entrega
    ========================================================================== */
 
-/* Regras da entrega da própria loja. Espelham o que o checkout já prometia:
-   "1 a 3 dias úteis · grátis acima de R$ 299". */
-const FRETE_GRATIS_ACIMA = Number(process.env.FRETE_GRATIS_ACIMA || 299);
-const FRETE_LOCAL = Number(process.env.FRETE_LOCAL || 24.9);
+/* Regras de entrega da VM Click (out/2026):
+   - transportadoras para qualquer CEP, com o preço e o prazo de cada uma;
+   - entrega grátis pela loja só em Curitiba e a partir de R$ 500, em até 3
+     dias úteis - quem se encaixa ainda vê as transportadoras pagas;
+   - entrega em até 24h não é cotada aqui: o cliente pede pelo WhatsApp;
+   - pedido grande demais para transportadora: orçamento pelo WhatsApp.
+   A entrega própria paga (R$ 24,90) deixou de existir. */
+const FRETE_GRATIS_ACIMA = Number(process.env.FRETE_GRATIS_ACIMA || 500);
+const PRAZO_ENTREGA_LOJA = Number(process.env.FRETE_PRAZO_LOJA || 3);
+
+/* Retirada não depende de cotação: vale mesmo com o Melhor Envio fora do ar. */
+const OPCAO_RETIRADA = Object.freeze({
+  id: 'retirada',
+  tipo: 'retirada',
+  transportadora: 'VM Click',
+  servico: 'Retirar na loja - Portão',
+  preco: 0,
+  prazo: null,
+  detalhe: 'R. Amadeu do Amaral, 1602 · pronto em 2 horas',
+});
 
 /**
  * Lista completa do que o cliente pode escolher para aquele CEP: retirada,
- * entrega própria quando o CEP é de Curitiba ou região, e as transportadoras.
+ * entrega grátis da loja quando vale, e as transportadoras.
  *
  * Usada pela cotação na tela e de novo na criação do pedido, para o preço do
  * frete cobrado sair daqui e não do navegador.
  */
 async function opcoesDeEntrega(cep, itens, subtotal) {
   const r = await cotar(cep, itens);
+  const destino = apenasDigitos(cep);
+  const curitiba = dentro(destino, CEPS_GRATIS);
+  const gratis = curitiba && Number(subtotal) >= FRETE_GRATIS_ACIMA;
 
-  const opcoes = [
-    {
-      id: 'retirada',
-      tipo: 'retirada',
-      transportadora: 'VM Click',
-      servico: 'Retirar na loja - Portão',
-      preco: 0,
-      prazo: null,
-      detalhe: 'R. Amadeu do Amaral, 1602 · pronto em 2 horas',
-    },
-  ];
+  const opcoes = [{ ...OPCAO_RETIRADA }];
 
-  if (r.local) {
-    const gratis = Number(subtotal) >= FRETE_GRATIS_ACIMA;
+  if (gratis) {
     opcoes.push({
       id: 'entrega-local',
       tipo: 'local',
       transportadora: 'VM Click',
-      servico: 'Entrega VM Click - Curitiba e região',
-      preco: gratis ? 0 : FRETE_LOCAL,
-      prazo: 3,
-      detalhe: gratis ? 'Frete grátis nesta compra' : `Grátis acima de R$ ${FRETE_GRATIS_ACIMA}`,
+      servico: 'Entrega grátis VM Click - Curitiba',
+      preco: 0,
+      prazo: PRAZO_ENTREGA_LOJA,
+      detalhe: `Em até ${PRAZO_ENTREGA_LOJA} dias úteis`,
     });
   }
 
@@ -421,9 +440,15 @@ async function opcoesDeEntrega(cep, itens, subtotal) {
        sobra só a retirada na loja, em Curitiba, que não serve para quem está
        em outro estado. A tela precisa saber disso para oferecer o orçamento
        pelo WhatsApp em vez de fingir que há uma opção. */
-    semTransportadora: !r.opcoes.length && !r.local,
+    semTransportadora: !r.opcoes.length && !gratis,
+    /* CEP onde a loja entrega em até 24h: a tela oferece cotar pelo WhatsApp */
+    entregaRapida: r.local,
+    /* Curitiba abaixo do piso: quanto falta para a entrega grátis */
+    freteGratis: curitiba && !gratis
+      ? { acima: FRETE_GRATIS_ACIMA, falta: Math.round((FRETE_GRATIS_ACIMA - Number(subtotal || 0)) * 100) / 100 }
+      : null,
     pesoEstimado: r.estimado,
   };
 }
 
-module.exports = { cotar, opcoesDeEntrega, atendeEntregaLocal, catalogo, testarConexao, ErroFrete };
+module.exports = { cotar, opcoesDeEntrega, atendeEntregaLocal, catalogo, testarConexao, OPCAO_RETIRADA, ErroFrete };

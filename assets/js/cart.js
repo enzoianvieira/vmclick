@@ -7,8 +7,9 @@
   'use strict';
 
   var CHAVE = 'vm_carrinho_v1';
-  var FRETE_GRATIS = 299;
-  var FRETE_PADRAO = 24.90;
+  /* Entrega grátis da loja: só Curitiba e a partir deste valor em produtos.
+     O servidor (api/_frete.js) é quem decide; aqui é só para o aviso. */
+  var FRETE_GRATIS = 500;
 
   var Cart = window.VMCart = {};
 
@@ -43,17 +44,12 @@
   Cart.quantidade = function () {
     return Cart.itens.reduce(function (s, i) { return s + i.qtd; }, 0);
   };
-  /* Depois que o visitante cota o CEP, quem manda é a opção escolhida. Antes
-     disso vale a estimativa da entrega própria, que é o caso mais comum aqui
-     (a loja é de Curitiba) e evita mostrar "a calcular" no carrinho. */
+  /* O frete só existe depois que o visitante cota o CEP e escolhe uma opção.
+     Antes disso conta zero e a tela mostra "calculado na entrega": sem a
+     entrega própria paga, não há valor fixo honesto para estimar. */
   Cart.frete = function () {
-    var sub = Cart.subtotal();
-    if (sub === 0) return 0;
-
     var escolhida = window.VMFrete && VMFrete.selecionada();
-    if (escolhida) return escolhida.preco;
-
-    return sub >= FRETE_GRATIS ? 0 : FRETE_PADRAO;
+    return escolhida && Cart.subtotal() > 0 ? escolhida.preco : 0;
   };
 
   /** true enquanto o frete ainda é estimativa, não cotação de CEP. */
@@ -154,8 +150,8 @@
 
     var falta = Cart.faltaFreteGratis();
     var aviso = falta > 0
-      ? '<p style="font-size:13px;color:var(--text-muted)">Faltam <b>' + window.VM.money(falta) + '</b> para frete grátis.</p>'
-      : '<p style="font-size:13px;color:var(--success);font-weight:600">Você ganhou frete grátis.</p>';
+      ? '<p style="font-size:13px;color:var(--text-muted)">Faltam <b>' + window.VM.money(falta) + '</b> para entrega grátis em Curitiba.</p>'
+      : '<p style="font-size:13px;color:var(--success);font-weight:600">Entrega grátis em Curitiba liberada.</p>';
 
     foot.innerHTML =
       aviso +
@@ -241,6 +237,5 @@
   };
 
   Cart.FRETE_GRATIS = FRETE_GRATIS;
-  Cart.FRETE_PADRAO = FRETE_PADRAO;
 })();
 

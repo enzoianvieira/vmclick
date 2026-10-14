@@ -22,7 +22,7 @@ const asaas = require('./_asaas.js');
 const pedidos = require('./_pedido.js');
 const armazem = require('./_armazem.js');
 const config = require('./_config.js');
-const { opcoesDeEntrega, catalogo, ErroFrete } = require('./_frete.js');
+const { opcoesDeEntrega, catalogo, OPCAO_RETIRADA, ErroFrete } = require('./_frete.js');
 
 const { ErroPagamento } = asaas;
 
@@ -217,6 +217,9 @@ function precificar(itens) {
  * qualquer pedido com frete zero.
  */
 async function resolverFrete(freteId, endereco, itens, subtotal) {
+  /* Retirada não depende da cotação: funciona com o Melhor Envio fora. */
+  if (freteId === 'retirada') return { opcao: { ...OPCAO_RETIRADA }, aCombinar: false };
+
   if (freteId === 'combinar') {
     try {
       await opcoesDeEntrega(endereco.cep, itens, subtotal);

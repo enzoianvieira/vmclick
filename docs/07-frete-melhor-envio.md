@@ -94,15 +94,29 @@ houve com o Olist. O mesmo KV atende as duas integrações.
 
 ## Regras da loja
 
+Definidas pela VM Click em outubro de 2026:
+
 | Situação | O que aparece |
 |---|---|
-| Qualquer CEP | Retirar na loja — grátis |
-| CEP em `FRETE_CEP_LOCAL` | Entrega VM Click — `FRETE_LOCAL`, grátis acima de `FRETE_GRATIS_ACIMA` |
-| Qualquer CEP | Transportadoras cotadas no Melhor Envio |
+| Qualquer CEP | Transportadoras cotadas no Melhor Envio, com preço e data prevista |
+| Qualquer CEP | Retirar na loja (Portão) — grátis, pronto em 2 horas |
+| Curitiba (`FRETE_CEP_GRATIS`) e pedido a partir de `FRETE_GRATIS_ACIMA` (R$ 500) | Entrega grátis VM Click em até `FRETE_PRAZO_LOJA` (3) dias úteis — as transportadoras pagas continuam na lista |
+| Curitiba abaixo de R$ 500 | Barra "faltam R$ X para entrega grátis" |
+| Curitiba e região (`FRETE_CEP_LOCAL`) | "Precisa em até 24 horas?" — abre o WhatsApp com CEP, endereço e itens; a loja cota ali |
+| Nenhuma transportadora atende, ou pedido grande demais | Orçamento pelo WhatsApp |
 
-Padrão de `FRETE_CEP_LOCAL`: Curitiba (80000-000 a 82999-999) e região
-metropolitana (83000-000 a 83800-999). **Confirmar essas faixas com a loja** —
-foram deduzidas da numeração dos CEPs, não de uma lista de atendimento real.
+A entrega própria **paga** (R$ 24,90) deixou de existir. A entrega em até 24h
+não é calculada no site (R$ 7/km com mínimo de R$ 20, feita por motoboy ou
+Loggi): a loja cota caso a caso pelo WhatsApp.
+
+**Atenção à Vercel:** se `FRETE_GRATIS_ACIMA=299` ou `FRETE_LOCAL` estiverem
+definidas no painel da Vercel, apague ou atualize — a variável vence o padrão
+do código.
+
+No checkout, o endereço vem antes do frete: as opções só aparecem com o
+endereço completo (o CEP preenche rua, bairro e cidade; falta o número). Quem
+vai retirar escolhe "Vou retirar na loja" sem precisar de endereço. A
+retirada não depende da cotação: funciona mesmo com o Melhor Envio fora do ar.
 
 A retirada na loja nunca vem pré-selecionada, mesmo custando zero: quem digita
 um CEP de outro estado não pode sair do passo com "retirar em Curitiba" marcado

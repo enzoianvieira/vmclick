@@ -769,8 +769,10 @@
           '<tr><th scope="row">Unidade de venda</th><td>' + p.unidade + '</td></tr>' +
           '</tbody></table></div></div>' +
         '<div class="tabpanel" id="tab-ent" role="tabpanel" aria-labelledby="t-ent" hidden>' +
-          '<p class="muted">Entrega para Curitiba e região metropolitana em até 3 dias úteis. Frete grátis acima de ' +
-          VM.money(window.VMCart.FRETE_GRATIS) + '. Retirada na loja sem custo, disponível a partir de 2 horas após a confirmação. ' +
+          '<p class="muted">Envio para todo o Brasil por transportadora, com valor e prazo calculados pelo CEP. ' +
+          'Entrega grátis em Curitiba em até 3 dias úteis para pedidos a partir de ' + VM.money(window.VMCart.FRETE_GRATIS) + '. ' +
+          'Precisa em até 24 horas? Fale com a loja pelo WhatsApp. ' +
+          'Retirada na loja sem custo, disponível a partir de 2 horas após a confirmação. ' +
           'Trocas e devoluções em até 7 dias corridos após o recebimento, conforme o Código de Defesa do Consumidor.</p></div>' +
       '</div>' +
     '</div>';

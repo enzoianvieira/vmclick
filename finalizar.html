@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/pages.css">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261013b">
 <script>document.documentElement.classList.add('js-anim');</script>
 </head>
 <body class="woocommerce-checkout">
@@ -48,10 +48,10 @@
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js"></script>
-<script src="assets/js/cart.js"></script>
-<script src="assets/js/frete.js"></script>
-<script src="assets/js/cartao.js"></script>
-<script src="assets/js/catalog.js"></script>
+<script src="assets/js/cart.js?v=20261013b"></script>
+<script src="assets/js/frete.js?v=20261013b"></script>
+<script src="assets/js/cartao.js?v=20261013b"></script>
+<script src="assets/js/catalog.js?v=20261013b"></script>
 <script>
 document.addEventListener('vm:ready', function () {
   var raiz = document.getElementById('checkout');
@@ -59,6 +59,20 @@ document.addEventListener('vm:ready', function () {
   var pagamento = null;
   var parcelas = 1;
   var enviando = false;
+
+  /* Entrega: o endereço vem antes das opções. A cotação roda uma vez por CEP,
+     quando o endereço está completo; editar o endereço à mão desliga o
+     preenchimento automático pelo CEP. */
+  var freteCotadoPara = null;
+  var editandoEndereco = false;
+  var esperaEndereco = null;
+
+  /* Igual a OPCAO_RETIRADA de api/_frete.js: retirar não depende de cotação. */
+  var RETIRADA = {
+    id: 'retirada', tipo: 'retirada', transportadora: 'VM Click',
+    servico: 'Retirar na loja - Portão', preco: 0, prazo: null,
+    detalhe: 'R. Amadeu do Amaral, 1602 · pronto em 2 horas',
+  };
 
   /* Os painéis são redesenhados a cada passo; o que a pessoa digitou fica
      aqui, senão voltar um passo apagaria o formulário. Só em memória: CPF e
@@ -92,12 +106,16 @@ document.addEventListener('vm:ready', function () {
     return Math.max(1, Math.min(cfg.maxParcelas, Math.floor(valores().total / cfg.parcelaMinima)));
   }
 
+  /* Passo já feito é botão: no celular é o caminho de volta, já que a barra
+     fixa de baixo só tem o total e o "Continuar". */
   function barraPassos() {
     return '<div class="steps">' + PASSOS.map(function (t, i) {
       var n = i + 1;
       var cls = n === passo ? ' is-active' : (n < passo ? ' is-done' : '');
-      return '<div class="step' + cls + '"><span class="step__n">' + (n < passo ? '✓' : n) + '</span>' +
-        '<span class="step__t">' + t + '</span></div>' +
+      var miolo = '<span class="step__n">' + (n < passo ? '✓' : n) + '</span><span class="step__t">' + t + '</span>';
+      return (n < passo
+        ? '<button type="button" class="step step--link' + cls + '" data-ir-passo="' + n + '" aria-label="Voltar para ' + t + '">' + miolo + '</button>'
+        : '<div class="step' + cls + '"' + (n === passo ? ' aria-current="step"' : '') + '>' + miolo + '</div>') +
         (n < PASSOS.length ? '<span class="step__bar"></span>' : '');
     }).join('') + '</div>';
   }
@@ -119,10 +137,9 @@ document.addEventListener('vm:ready', function () {
       '<div class="summary__row"><span>Frete' +
         (escolhida ? '<br><small class="subtle">' + esc(escolhida.servico) + '</small>' : '') +
         '</span><b>' +
-          (escolhida && escolhida.tipo === 'combinar'
-            ? 'A combinar'
-            : (frete === 0 ? 'Grátis' : VM.money(frete))) + '</b></div>' +
-      (escolhida ? '' : '<p class="frete-nota">Frete estimado. Calcule pelo CEP no passo de entrega.</p>') +
+          (!escolhida ? 'A calcular'
+            : (escolhida.tipo === 'combinar' ? 'A combinar' : (frete === 0 ? 'Grátis' : VM.money(frete)))) + '</b></div>' +
+      (escolhida ? '' : '<p class="frete-nota">O frete é calculado pelo CEP no passo de entrega.</p>') +
       (v.desconto > 0
         ? '<div class="summary__row" style="color:var(--success)"><span>Desconto Pix (' + cfg.descontoPix + '%)</span><b>− ' + VM.money(v.desconto) + '</b></div>'
         : '') +
@@ -151,23 +168,43 @@ document.addEventListener('vm:ready', function () {
     '</div>';
   }
 
+  function linhaEndereco2() {
+    var cidade = [dados.cidade, dados.uf].filter(Boolean).join(' – ');
+    return [dados.bairro, cidade].filter(Boolean).join(' · ');
+  }
+
   function painelEntrega() {
-    return '<div class="panel stack-6">' +
-      '<h3>Entrega</h3>' +
-      '<p class="muted" style="font-size:14px;margin-top:-8px">' +
-        'Informe o CEP para ver as formas de entrega e o prazo.</p>' +
-      '<div class="field-grid field-grid--2">' +
-        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="80000-000" value="' + esc(dados.cep || VMFrete.cep() || '') + '"><span class="err">Informe o CEP.</span></div>' +
-        '<div class="field" style="align-self:end"><button class="btn btn--secondary" type="button" id="calcular-frete">Calcular frete</button></div>' +
+    var temEndereco = Boolean(dados.rua && dados.cidade) && !editandoEndereco;
+    return '<div class="checkout-etapa">' +
+      '<div class="panel stack-6">' +
+        '<div class="panel__cab"><h3>Onde você quer receber?</h3>' +
+          '<p class="muted">Digite o CEP: o endereço é preenchido sozinho.</p></div>' +
+        '<div class="cep-linha">' +
+          '<div class="field"><label for="cep">CEP <span class="req">*</span></label>' +
+            '<input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="80000-000" value="' + esc(dados.cep || VMFrete.cep() || '') + '">' +
+            '<span class="err">Informe um CEP válido.</span></div>' +
+          '<a class="cep-linha__ajuda" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Não sei meu CEP</a>' +
+        '</div>' +
+        '<div class="end-resumo" id="end-resumo"' + (temEndereco ? '' : ' hidden') + '>' +
+          VM.icon('local') +
+          '<span class="end-resumo__texto"><b id="end-linha1">' + val('rua') + '</b><span id="end-linha2">' + esc(linhaEndereco2()) + '</span></span>' +
+          '<button type="button" class="btn btn--ghost btn--sm" id="editar-endereco">Editar</button>' +
+        '</div>' +
+        '<div class="field-grid field-grid--2" id="end-completo"' + (editandoEndereco ? '' : ' hidden') + '>' +
+          '<div class="field"><label for="rua">Endereço <span class="req" data-req-end>*</span></label><input id="rua" autocomplete="address-line1" placeholder="Rua, avenida…" value="' + val('rua') + '"><span class="err">Informe o endereço.</span></div>' +
+          '<div class="field"><label for="bairro">Bairro <span class="req" data-req-end>*</span></label><input id="bairro" placeholder="Portão" value="' + val('bairro') + '"><span class="err">Informe o bairro.</span></div>' +
+          '<div class="field"><label for="cidade">Cidade <span class="req" data-req-end>*</span></label><input id="cidade" autocomplete="address-level2" placeholder="Curitiba" value="' + val('cidade') + '"><span class="err">Informe a cidade.</span></div>' +
+          '<div class="field"><label for="uf">UF <span class="req" data-req-end>*</span></label><input id="uf" autocomplete="address-level1" maxlength="2" placeholder="PR" style="text-transform:uppercase" value="' + val('uf') + '"><span class="err">Informe a UF.</span></div>' +
+        '</div>' +
+        '<div class="field-grid field-grid--2">' +
+          '<div class="field"><label for="numero">Número <span class="req" data-req-end>*</span></label><input id="numero" placeholder="Ex.: 1602" value="' + val('numero') + '"><span class="err">Informe o número.</span></div>' +
+          '<div class="field"><label for="compl">Complemento</label><input id="compl" autocomplete="address-line2" placeholder="Apto, bloco, referência" value="' + val('compl') + '"></div>' +
+        '</div>' +
       '</div>' +
-      '<div id="frete-opcoes" class="stack"></div>' +
-      '<div class="field-grid field-grid--2" id="endereco">' +
-        '<div class="field"><label for="rua">Endereço <span class="req" data-req-end>*</span></label><input id="rua" autocomplete="address-line1" placeholder="Rua, avenida…" value="' + val('rua') + '"><span class="err">Informe o endereço.</span></div>' +
-        '<div class="field"><label for="numero">Número <span class="req" data-req-end>*</span></label><input id="numero" placeholder="1602" value="' + val('numero') + '"><span class="err">Informe o número.</span></div>' +
-        '<div class="field"><label for="compl">Complemento</label><input id="compl" autocomplete="address-line2" placeholder="Apto, bloco, referência" value="' + val('compl') + '"></div>' +
-        '<div class="field"><label for="bairro">Bairro <span class="req" data-req-end>*</span></label><input id="bairro" placeholder="Portão" value="' + val('bairro') + '"><span class="err">Informe o bairro.</span></div>' +
-        '<div class="field"><label for="cidade">Cidade <span class="req" data-req-end>*</span></label><input id="cidade" autocomplete="address-level2" placeholder="Curitiba" value="' + val('cidade') + '"><span class="err">Informe a cidade.</span></div>' +
-        '<div class="field"><label for="uf">UF <span class="req" data-req-end>*</span></label><input id="uf" autocomplete="address-level1" maxlength="2" placeholder="PR" style="text-transform:uppercase" value="' + val('uf') + '"><span class="err">Informe a UF.</span></div>' +
+      '<div class="panel stack-6">' +
+        '<div class="panel__cab"><h3>Como você quer receber?</h3>' +
+          '<p class="muted">Previsão a partir da postagem, no próximo dia útil.</p></div>' +
+        '<div id="frete-opcoes"></div>' +
       '</div>' +
     '</div>';
   }
@@ -228,10 +265,11 @@ document.addEventListener('vm:ready', function () {
 
   function botoes() {
     var bloqueado = passo === 3 && (!cfg.ativo || !pagamento);
-    return '<div class="row" style="justify-content:space-between;margin-top:24px">' +
+    return '<div class="checkout-acoes">' +
       (passo > 1
         ? '<button class="btn btn--ghost" type="button" id="voltar">← Voltar</button>'
         : '<a class="btn btn--ghost" href="carrinho.html">← Voltar ao carrinho</a>') +
+      '<span class="checkout-acoes__total"><small>Total</small><b id="acoes-total">' + VM.money(valores().total) + '</b></span>' +
       '<button class="btn btn--primary btn--lg" type="button" id="avancar"' + (bloqueado ? ' disabled' : '') + '>' +
         textoBotao() + '</button>' +
     '</div>';
@@ -293,21 +331,112 @@ document.addEventListener('vm:ready', function () {
       avancar.textContent = textoBotao();
     });
 
+    raiz.querySelectorAll('[data-ir-passo]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        coletar(); passo = Number(b.getAttribute('data-ir-passo')); render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+
     var cep = document.getElementById('cep');
     if (cep) {
+      /* CEP completo já busca o endereço; as opções de entrega aparecem
+         quando o endereço fica completo (ver atualizarOpcoes). */
       cep.addEventListener('input', function () {
         this.value = VMFrete.formatarCep(this.value);
-        /* CEP completo já dispara a cotação: ninguém gosta de digitar e ainda
-           ter que clicar num botão. O botão fica para quem quer refazer. */
-        if (digitos(this.value).length === 8) { calcularFrete(); preencherEndereco(this.value); }
+        freteCotadoPara = null;
+        if (digitos(this.value).length === 8) { editandoEndereco = false; preencherEndereco(this.value); }
+        else atualizarOpcoes();
       });
-      if (digitos(cep.value).length === 8) calcularFrete();
+
+      ['rua', 'numero', 'bairro', 'cidade', 'uf'].forEach(function (id) {
+        document.getElementById(id).addEventListener('input', function () {
+          clearTimeout(esperaEndereco);
+          esperaEndereco = setTimeout(atualizarOpcoes, 350);
+        });
+      });
+
+      document.getElementById('editar-endereco').addEventListener('click', function () {
+        editandoEndereco = true;
+        mostrarEnderecoCompleto();
+        document.getElementById('rua').focus();
+      });
+
+      if (digitos(cep.value).length === 8 && !document.getElementById('rua').value) preencherEndereco(cep.value);
+      else atualizarOpcoes();
     }
 
-    var btnFrete = document.getElementById('calcular-frete');
-    if (btnFrete) btnFrete.addEventListener('click', calcularFrete);
-
     marcarEnderecoObrigatorio();
+  }
+
+  function enderecoPronto() {
+    return ['rua', 'numero', 'bairro', 'cidade', 'uf'].every(function (id) { return !invalido(id); });
+  }
+
+  function mostrarEnderecoCompleto() {
+    var resumoEnd = document.getElementById('end-resumo');
+    var completo = document.getElementById('end-completo');
+    if (resumoEnd) resumoEnd.hidden = true;
+    if (completo) completo.hidden = false;
+  }
+
+  function mostrarResumoEndereco() {
+    var v = function (id) { return document.getElementById(id).value.trim(); };
+    dados.rua = v('rua'); dados.bairro = v('bairro'); dados.cidade = v('cidade'); dados.uf = v('uf').toUpperCase();
+    document.getElementById('end-linha1').textContent = dados.rua;
+    document.getElementById('end-linha2').textContent = linhaEndereco2();
+    document.getElementById('end-resumo').hidden = false;
+    document.getElementById('end-completo').hidden = true;
+  }
+
+  /* O endereço vem antes do frete: sem ele completo, a caixa de opções pede
+     o que falta - e oferece a retirada, que dispensa endereço. */
+  function atualizarOpcoes() {
+    var alvo = document.getElementById('frete-opcoes');
+    var campo = document.getElementById('cep');
+    if (!alvo || !campo) return;
+    var cep = digitos(campo.value);
+    var atual = VMFrete.selecionada();
+
+    if (cep.length !== 8) {
+      freteCotadoPara = null;
+      alvo.innerHTML = '<p class="frete-espera">Digite o CEP para ver as opções de entrega.</p>';
+      return;
+    }
+
+    if (!enderecoPronto()) {
+      freteCotadoPara = null;
+      if (atual && atual.tipo === 'retirada') { mostrarSoRetirada(alvo); return; }
+      alvo.innerHTML =
+        '<div class="frete-espera"><p>Preencha o endereço completo, com o número, para ver as opções de entrega.</p>' +
+        '<button type="button" class="btn btn--ghost btn--sm" id="so-retirar">' + VM.icon('loja') + 'Vou retirar na loja</button></div>';
+      document.getElementById('so-retirar').addEventListener('click', function () {
+        VMFrete.escolher(RETIRADA);
+        mostrarSoRetirada(alvo);
+        aoMudarFrete();
+      });
+      return;
+    }
+
+    if (freteCotadoPara === cep) return;
+    freteCotadoPara = cep;
+    calcularFrete();
+  }
+
+  function mostrarSoRetirada(alvo) {
+    VMFrete.montarSeletor(alvo, { opcoes: [RETIRADA] }, { aoEscolher: aoMudarFrete });
+  }
+
+  /* O que vai pronto na mensagem de "entrega em até 24h" pelo WhatsApp. */
+  function mensagemEntregaRapida() {
+    coletar();
+    var end = [dados.rua, dados.numero].filter(Boolean).join(', ') +
+      (dados.compl ? ' - ' + dados.compl : '') + ', ' + linhaEndereco2();
+    return 'Olá! Quero cotar a entrega em até 24 horas.\n' +
+      'CEP: ' + VMFrete.formatarCep(dados.cep) + '\n' +
+      'Endereço: ' + end + '\n' +
+      'Itens: ' + VMCart.linhas().map(function (l) { return l.qtd + 'x ' + l.p.nome + ' (' + l.p.sku + ')'; }).join('; ') + '\n' +
+      'Subtotal: ' + VM.money(VMCart.subtotal());
   }
 
   /* Retirada na loja dispensa endereço; o resto precisa dele para entregar. */
@@ -326,14 +455,27 @@ document.addEventListener('vm:ready', function () {
      editáveis. */
   function preencherEndereco(cep) {
     var d = digitos(cep);
+    var alvo = document.getElementById('frete-opcoes');
+    if (alvo) alvo.innerHTML = '<p class="frete-espera">Buscando o endereço…</p>';
+
     fetch('https://viacep.com.br/ws/' + d + '/json/').then(function (r) { return r.json(); }).then(function (j) {
-      if (!j || j.erro) return;
+      var campo = document.getElementById('cep');
+      if (!campo || digitos(campo.value) !== d) return; /* o CEP mudou enquanto buscava */
+      if (!j || j.erro) {
+        VM.toast('CEP não encontrado. Confira ou preencha o endereço.', 'warn');
+        mostrarEnderecoCompleto(); atualizarOpcoes(); return;
+      }
       var mapa = { rua: j.logradouro, bairro: j.bairro, cidade: j.localidade, uf: j.uf };
       Object.keys(mapa).forEach(function (id) {
         var el = document.getElementById(id);
-        if (el && !el.value.trim() && mapa[id]) el.value = mapa[id];
+        if (el) el.value = mapa[id] || '';
       });
-    }).catch(function () { /* segue manual */ });
+      /* CEP de cidade inteira não traz rua: abre os campos para digitar */
+      if (j.logradouro && j.bairro) mostrarResumoEndereco(); else mostrarEnderecoCompleto();
+      atualizarOpcoes();
+      var numero = document.getElementById('numero');
+      if (numero && !numero.value && j.logradouro) numero.focus();
+    }).catch(function () { mostrarEnderecoCompleto(); atualizarOpcoes(); });
   }
 
   /* Cota o CEP digitado e redesenha as opções e o resumo. */
@@ -342,10 +484,10 @@ document.addEventListener('vm:ready', function () {
     var alvo = document.getElementById('frete-opcoes');
     if (!campo || !alvo) return;
 
-    alvo.innerHTML = '<p class="frete-nota">Calculando frete…</p>';
+    VMFrete.carregando(alvo);
 
     VMFrete.cotar(campo.value).then(function (dadosFrete) {
-      VMFrete.montarSeletor(alvo, dadosFrete, { aoEscolher: aoMudarFrete });
+      VMFrete.montarSeletor(alvo, dadosFrete, { aoEscolher: aoMudarFrete, mensagemEntregaRapida: mensagemEntregaRapida });
       aoMudarFrete();
     }).catch(function (e) {
       /* Cotação fora do ar não pode virar beco sem saída: sem uma alternativa
@@ -359,19 +501,17 @@ document.addEventListener('vm:ready', function () {
       };
 
       alvo.innerHTML =
-        '<div class="frete-aviso"><b>Não deu para calcular o frete agora.</b>' +
-          '<p>' + esc(e && e.message ? e.message : 'Tente de novo em instantes.') + '</p></div>' +
-        '<div class="stack" style="margin-top:12px">' +
-          '<label class="pay-opt frete-opt is-sel">' +
-            '<input type="radio" name="frete-opcao" value="combinar" checked>' +
-            VM.icon('atendente') +
-            '<span><span class="pay-opt__t">' + combinar.servico + '</span>' +
-            '<span class="pay-opt__d">' + combinar.detalhe + '</span></span>' +
-            '<b class="frete-opt__preco">A combinar</b>' +
-          '</label>' +
-        '</div>';
+        '<div class="frete-aviso"><b>Não conseguimos calcular o frete agora.</b>' +
+          '<p>Tente de novo, ou siga com a compra: a loja confirma valor e prazo antes de enviar.</p>' +
+          '<button type="button" class="btn btn--secondary btn--sm" id="tentar-frete">Tentar de novo</button></div>' +
+        '<div id="frete-opcoes-reserva"></div>';
+      if (e && e.message) console.warn('[frete]', e.message);
 
-      VMFrete.escolher(combinar);
+      document.getElementById('tentar-frete').addEventListener('click', function () {
+        freteCotadoPara = null; VMFrete.escolher(null); atualizarOpcoes();
+      });
+      VMFrete.montarSeletor(document.getElementById('frete-opcoes-reserva'),
+        { opcoes: [combinar, RETIRADA] }, { aoEscolher: aoMudarFrete });
       aoMudarFrete();
     });
   }
@@ -389,6 +529,8 @@ document.addEventListener('vm:ready', function () {
     var novo = document.createElement('div');
     novo.innerHTML = resumo();
     antigo.replaceWith(novo.firstChild);
+    var totalBarra = document.getElementById('acoes-total');
+    if (totalBarra) totalBarra.textContent = VM.money(valores().total);
   }
 
   function invalido(id) {
@@ -412,6 +554,8 @@ document.addEventListener('vm:ready', function () {
     if (passo === 2) obrigatorios = ['cep'].concat(exigeEndereco() ? ['rua', 'numero', 'bairro', 'cidade', 'uf'] : []);
     var ok = true;
 
+    if (passo === 2 && exigeEndereco() && ['rua', 'bairro', 'cidade', 'uf'].some(invalido)) mostrarEnderecoCompleto();
+
     ['nome', 'doc', 'email', 'tel', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'uf'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
@@ -423,7 +567,7 @@ document.addEventListener('vm:ready', function () {
     if (!ok) { VM.toast('Confira os campos destacados.', 'warn'); return false; }
 
     if (passo === 2 && !VMFrete.selecionada()) {
-      VM.toast('Calcule o frete e escolha uma forma de entrega.', 'warn');
+      VM.toast('Escolha uma forma de entrega.', 'warn');
       return false;
     }
 

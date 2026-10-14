@@ -942,7 +942,11 @@
   .checkout-acoes__total { display: flex; flex-direction: column; }
   .checkout-acoes__total small { font-size: 12px; color: var(--text-muted); }
   .checkout-acoes__total b { font-family: var(--font-display); font-size: 20px; color: var(--text); }
-  .checkout-acoes .btn--lg { padding-inline: 18px; }
+  /* o botão divide a largura com o total e quebra linha se o texto não
+     couber - texto longo ("Pagar R$ 1.234,56 com cartão") empurrava a página
+     para o lado em telas de 360 px */
+  .checkout-acoes__total { flex: none; }
+  .checkout-acoes .btn--lg { flex: 1 1 0; min-width: 0; padding-inline: 14px; white-space: normal; line-height: 1.2; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -955,3 +959,11 @@
 @media (max-width: 979px) {
   .woocommerce-checkout .wa-fab { bottom: 96px; }
 }
+
+/* Colunas do checkout podem encolher abaixo do conteúdo: sem isto, o "1fr"
+   do grid vira o tamanho mínimo do maior filho e a página rola para o lado. */
+.checkout-layout { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .checkout-layout { grid-template-columns: minmax(0, 1fr) 350px; } }
+.checkout-layout > *, .cc-area > *, .checkout-etapa > * { min-width: 0; }
+.cc-area { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .cc-area { grid-template-columns: 300px minmax(0, 1fr); } }

@@ -22,13 +22,18 @@
   /* Elo e Hipercard antes de Visa e Mastercard: vários BINs Elo começam com
      4 ou 5 e seriam lidos como Visa/Master. */
   var BANDEIRAS = [
-    { id: 'elo',        nome: 'Elo',        re: /^(4011(78|79)|43(1274|8935)|45(1416|7393|763[12])|50(4175|6699|67[0-7]\d|9\d{3})|627780|63(6297|6368)|650\d{3}|6516\d{2}|6550\d{2})/ },
-    { id: 'hipercard',  nome: 'Hipercard',  re: /^(606282|3841)/ },
-    { id: 'amex',       nome: 'American Express', re: /^3[47]/, cvv: 4, grupos: [4, 6, 5] },
-    { id: 'diners',     nome: 'Diners',     re: /^3(0[0-5]|[68])/, grupos: [4, 6, 4] },
-    { id: 'visa',       nome: 'Visa',       re: /^4/ },
-    { id: 'mastercard', nome: 'Mastercard', re: /^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]|720))/ },
+    { id: 'elo',        nome: 'Elo',        re: /^(4011(78|79)|43(1274|8935)|45(1416|7393|763[12])|50(4175|6699|67[0-7]\d|9\d{3})|627780|63(6297|6368)|650\d{3}|6516\d{2}|6550\d{2})/, tamanhos: [16] },
+    { id: 'hipercard',  nome: 'Hipercard',  re: /^(606282|3841)/, tamanhos: [16, 19] },
+    { id: 'amex',       nome: 'American Express', re: /^3[47]/, cvv: 4, grupos: [4, 6, 5], tamanhos: [15] },
+    { id: 'diners',     nome: 'Diners',     re: /^3(0[0-5]|[68])/, grupos: [4, 6, 4], tamanhos: [14] },
+    { id: 'visa',       nome: 'Visa',       re: /^4/, tamanhos: [13, 16, 19] },
+    { id: 'mastercard', nome: 'Mastercard', re: /^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]|720))/, tamanhos: [16] },
   ];
+
+  /* Tamanhos aceitos do número: os da bandeira, ou 16 enquanto ela não é
+     reconhecida. O maior é o teto do campo - não dá para digitar a mais. */
+  function tamanhos(b) { return (b && b.tamanhos) || [16]; }
+  function maxNumero(b) { return Math.max.apply(null, tamanhos(b)); }
 
   function digitos(v) { return String(v || '').replace(/\D/g, ''); }
 
@@ -94,10 +99,10 @@
       '</div>' +
       '<div class="field-grid field-grid--2 cc-campos">' +
         '<div class="field cc-campos__largo"><label for="cc-numero">Número do cartão <span class="req">*</span></label>' +
-          '<input id="cc-numero" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="23">' +
-          '<span class="err">Número do cartão inválido.</span></div>' +
+          '<input id="cc-numero" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="23" aria-describedby="cc-numero-err">' +
+          '<span class="err" id="cc-numero-err">Número do cartão inválido.</span></div>' +
         '<div class="field cc-campos__largo"><label for="cc-nome">Nome impresso no cartão <span class="req">*</span></label>' +
-          '<input id="cc-nome" autocomplete="cc-name" placeholder="Como está no cartão" maxlength="60" style="text-transform:uppercase">' +
+          '<input id="cc-nome" autocomplete="cc-name" placeholder="Como está no cartão" maxlength="26" style="text-transform:uppercase">' +
           '<span class="err">Informe o nome impresso no cartão.</span></div>' +
         '<div class="field"><label for="cc-validade">Validade <span class="req">*</span></label>' +
           '<input id="cc-validade" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" maxlength="5">' +
@@ -122,9 +127,7 @@
 
     num.addEventListener('input', function () {
       var b = bandeira(num.value);
-      var g = grupos(b);
-      var max = g.reduce(function (a, n) { return a + n; }, 0);
-      var d = digitos(num.value).slice(0, Math.max(max, 19));
+      var d = digitos(num.value).slice(0, maxNumero(b));
       num.value = agrupar(d, b);
       alvo('numero').textContent = numeroNaPrevia(d, b);
       alvo('bandeira').textContent = b ? b.nome : '';
@@ -133,13 +136,17 @@
     });
 
     nome.addEventListener('input', function () {
-      alvo('nome').textContent = nome.value.trim().toUpperCase() || 'SEU NOME AQUI';
+      /* só letras e espaço, como sai impresso no cartão (até 26) */
+      var limpo = nome.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').replace(/\s{2,}/g, ' ').replace(/^\s+/, '').toUpperCase().slice(0, 26);
+      if (limpo !== nome.value) nome.value = limpo;
+      alvo('nome').textContent = limpo.trim() || 'SEU NOME AQUI';
     });
 
     val.addEventListener('input', function () {
       var d = digitos(val.value).slice(0, 4);
-      /* "1" vira "01/" só quando não pode ser mês de dois dígitos */
-      if (d.length === 1 && Number(d) > 1) d = '0' + d;
+      /* mês só de 01 a 12: "4" vira "04"; "13" e "00" não entram */
+      if (d.length >= 1 && Number(d[0]) > 1) d = '0' + d.slice(0, 3);
+      if (d.length >= 2 && ((d[0] === '1' && Number(d[1]) > 2) || d.slice(0, 2) === '00')) d = d[0];
       val.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
       alvo('validade').textContent = val.value || 'MM/AA';
     });
@@ -151,6 +158,22 @@
       /* digitar também vira: preenchimento automático nem sempre dá foco */
       if (cvv.value) virar(true);
     });
+
+    /* Aviso ao sair do campo, e já ao completar: validade "03/91" ou
+       número que não fecha o dígito verificador acusam na hora. */
+    if (window.VMCampos) {
+      VMCampos.campo(num, null, function () { return erroDe('cc-numero'); });
+      VMCampos.campo(nome, null, function () { return erroDe('cc-nome'); });
+      VMCampos.campo(val, null, function () { return erroDe('cc-validade'); });
+      VMCampos.campo(cvv, null, function () { return erroDe('cc-cvv'); });
+
+      num.addEventListener('input', function () {
+        if (digitos(num.value).length === maxNumero(bandeira(num.value))) VMCampos.marcar(num, erroDe('cc-numero'));
+      });
+      val.addEventListener('input', function () {
+        if (digitos(val.value).length === 4) VMCampos.marcar(val, erroDe('cc-validade'));
+      });
+    }
 
     cvv.addEventListener('focus', function () { virar(true); });
     cvv.addEventListener('blur', function () { virar(false); });
@@ -167,22 +190,43 @@
     return { mes: Number(d.slice(0, 2)), ano: 2000 + Number(d.slice(2, 4)), ok: d.length === 4 };
   }
 
-  /** null se está tudo certo; senão { campo, msg } do primeiro problema. */
-  Cartao.validar = function () {
+  /** '' se o campo vale; senão a mensagem. */
+  function erroDe(id) {
     var numero = digitos(document.getElementById('cc-numero').value);
-    var nome = document.getElementById('cc-nome').value.trim();
-    var cvv = digitos(document.getElementById('cc-cvv').value);
-    var v = validade();
-    var agora = new Date();
     var b = bandeira(numero);
 
-    if (numero.length < 13 || numero.length > 19 || !luhn(numero)) return { campo: 'cc-numero', msg: 'Número do cartão inválido.' };
-    if (nome.length < 3) return { campo: 'cc-nome', msg: 'Informe o nome impresso no cartão.' };
-    if (!v.ok || v.mes < 1 || v.mes > 12 ||
-        v.ano < agora.getFullYear() || (v.ano === agora.getFullYear() && v.mes < agora.getMonth() + 1)) {
-      return { campo: 'cc-validade', msg: 'Validade inválida ou vencida.' };
+    if (id === 'cc-numero') {
+      if (tamanhos(b).indexOf(numero.length) === -1) {
+        return 'O número ' + (b ? 'do ' + b.nome + ' ' : '') + 'tem ' + tamanhos(b).join(' ou ') + ' dígitos.';
+      }
+      return luhn(numero) ? '' : 'Número do cartão inválido. Confira os dígitos.';
     }
-    if (cvv.length !== tamanhoCvv(b)) return { campo: 'cc-cvv', msg: 'Código de segurança inválido.' };
+    if (id === 'cc-nome') {
+      var nome = document.getElementById('cc-nome').value.trim();
+      return nome.replace(/\s/g, '').length >= 3 ? '' : 'Informe o nome como está impresso no cartão.';
+    }
+    if (id === 'cc-validade') {
+      var v = validade();
+      var agora = new Date();
+      if (!v.ok || v.mes < 1 || v.mes > 12) return 'Use o formato MM/AA.';
+      if (v.ano < agora.getFullYear() || (v.ano === agora.getFullYear() && v.mes < agora.getMonth() + 1)) return 'Cartão vencido.';
+      if (v.ano > agora.getFullYear() + 20) return 'Validade inválida.';
+      return '';
+    }
+    if (id === 'cc-cvv') {
+      var n = tamanhoCvv(b);
+      return digitos(document.getElementById('cc-cvv').value).length === n ? '' : 'O código tem ' + n + ' dígitos (verso do cartão).';
+    }
+    return '';
+  }
+
+  /** null se está tudo certo; senão { campo, msg } do primeiro problema. */
+  Cartao.validar = function () {
+    var ids = ['cc-numero', 'cc-nome', 'cc-validade', 'cc-cvv'];
+    for (var i = 0; i < ids.length; i++) {
+      var msg = erroDe(ids[i]);
+      if (msg) return { campo: ids[i], msg: msg };
+    }
     return null;
   };
 

@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/pages.css?v=20261013b">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
 <script>document.documentElement.classList.add('js-anim');</script>
 </head>
 <body class="woocommerce-checkout">
@@ -49,8 +49,9 @@
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/cart.js?v=20261013b"></script>
-<script src="assets/js/frete.js?v=20261013b"></script>
-<script src="assets/js/cartao.js?v=20261013b"></script>
+<script src="assets/js/frete.js?v=20261013c"></script>
+<script src="assets/js/campos.js?v=20261013c"></script>
+<script src="assets/js/cartao.js?v=20261013c"></script>
 <script src="assets/js/catalog.js?v=20261013b"></script>
 <script>
 document.addEventListener('vm:ready', function () {
@@ -156,13 +157,13 @@ document.addEventListener('vm:ready', function () {
       '<h3>Seus dados</h3>' +
       '<div class="field-grid field-grid--2">' +
         '<div class="field"><label for="nome">Nome completo <span class="req">*</span></label>' +
-          '<input id="nome" autocomplete="name" placeholder="Nome e sobrenome" value="' + val('nome') + '"><span class="err">Informe nome e sobrenome.</span></div>' +
+          '<input id="nome" data-campo="nome" autocomplete="name" maxlength="100" placeholder="Nome e sobrenome" value="' + val('nome') + '"><span class="err">Informe nome e sobrenome.</span></div>' +
         '<div class="field"><label for="doc">CPF ou CNPJ <span class="req">*</span></label>' +
-          '<input id="doc" inputmode="numeric" placeholder="000.000.000-00" value="' + val('doc') + '"><span class="err">Informe um CPF ou CNPJ válido.</span></div>' +
+          '<input id="doc" data-campo="doc" inputmode="numeric" maxlength="18" placeholder="000.000.000-00" value="' + val('doc') + '"><span class="err">Informe um CPF ou CNPJ válido.</span></div>' +
         '<div class="field"><label for="email">E-mail <span class="req">*</span></label>' +
-          '<input id="email" type="email" autocomplete="email" placeholder="voce@email.com" value="' + val('email') + '"><span class="err">Informe um e-mail válido.</span></div>' +
+          '<input id="email" data-campo="email" type="email" autocomplete="email" maxlength="120" placeholder="voce@email.com" value="' + val('email') + '"><span class="err">Informe um e-mail válido.</span></div>' +
         '<div class="field"><label for="tel">Telefone <span class="req">*</span></label>' +
-          '<input id="tel" inputmode="tel" autocomplete="tel" placeholder="(41) 90000-0000" value="' + val('tel') + '"><span class="err">Informe DDD + número.</span></div>' +
+          '<input id="tel" data-campo="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(41) 90000-0000" value="' + val('tel') + '"><span class="err">Informe DDD + número.</span></div>' +
       '</div>' +
       '<label class="filter-opt" style="padding:0"><input type="checkbox" id="pj"' + (dados.pj ? ' checked' : '') + '>Comprar como pessoa jurídica (emitir NF-e para CNPJ)</label>' +
     '</div>';
@@ -181,7 +182,7 @@ document.addEventListener('vm:ready', function () {
           '<p class="muted">Digite o CEP: o endereço é preenchido sozinho.</p></div>' +
         '<div class="cep-linha">' +
           '<div class="field"><label for="cep">CEP <span class="req">*</span></label>' +
-            '<input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="80000-000" value="' + esc(dados.cep || VMFrete.cep() || '') + '">' +
+            '<input id="cep" data-campo="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="80000-000" value="' + esc(dados.cep || VMFrete.cep() || '') + '">' +
             '<span class="err">Informe um CEP válido.</span></div>' +
           '<a class="cep-linha__ajuda" href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Não sei meu CEP</a>' +
         '</div>' +
@@ -191,14 +192,14 @@ document.addEventListener('vm:ready', function () {
           '<button type="button" class="btn btn--ghost btn--sm" id="editar-endereco">Editar</button>' +
         '</div>' +
         '<div class="field-grid field-grid--2" id="end-completo"' + (editandoEndereco ? '' : ' hidden') + '>' +
-          '<div class="field"><label for="rua">Endereço <span class="req" data-req-end>*</span></label><input id="rua" autocomplete="address-line1" placeholder="Rua, avenida…" value="' + val('rua') + '"><span class="err">Informe o endereço.</span></div>' +
-          '<div class="field"><label for="bairro">Bairro <span class="req" data-req-end>*</span></label><input id="bairro" placeholder="Portão" value="' + val('bairro') + '"><span class="err">Informe o bairro.</span></div>' +
-          '<div class="field"><label for="cidade">Cidade <span class="req" data-req-end>*</span></label><input id="cidade" autocomplete="address-level2" placeholder="Curitiba" value="' + val('cidade') + '"><span class="err">Informe a cidade.</span></div>' +
-          '<div class="field"><label for="uf">UF <span class="req" data-req-end>*</span></label><input id="uf" autocomplete="address-level1" maxlength="2" placeholder="PR" style="text-transform:uppercase" value="' + val('uf') + '"><span class="err">Informe a UF.</span></div>' +
+          '<div class="field"><label for="rua">Endereço <span class="req" data-req-end>*</span></label><input id="rua" data-campo="endereco" autocomplete="address-line1" maxlength="120" placeholder="Rua, avenida…" value="' + val('rua') + '"><span class="err">Informe o endereço.</span></div>' +
+          '<div class="field"><label for="bairro">Bairro <span class="req" data-req-end>*</span></label><input id="bairro" data-campo="endereco" maxlength="80" placeholder="Portão" value="' + val('bairro') + '"><span class="err">Informe o bairro.</span></div>' +
+          '<div class="field"><label for="cidade">Cidade <span class="req" data-req-end>*</span></label><input id="cidade" data-campo="cidade" autocomplete="address-level2" maxlength="80" placeholder="Curitiba" value="' + val('cidade') + '"><span class="err">Informe a cidade.</span></div>' +
+          '<div class="field"><label for="uf">UF <span class="req" data-req-end>*</span></label><input id="uf" data-campo="uf" autocomplete="address-level1" maxlength="2" placeholder="PR" style="text-transform:uppercase" value="' + val('uf') + '"><span class="err">Informe a UF.</span></div>' +
         '</div>' +
         '<div class="field-grid field-grid--2">' +
-          '<div class="field"><label for="numero">Número <span class="req" data-req-end>*</span></label><input id="numero" placeholder="Ex.: 1602" value="' + val('numero') + '"><span class="err">Informe o número.</span></div>' +
-          '<div class="field"><label for="compl">Complemento</label><input id="compl" autocomplete="address-line2" placeholder="Apto, bloco, referência" value="' + val('compl') + '"></div>' +
+          '<div class="field"><label for="numero">Número <span class="req" data-req-end>*</span></label><input id="numero" data-campo="numero" maxlength="10" placeholder="Ex.: 1602 ou S/N" value="' + val('numero') + '"><span class="err">Informe o número.</span></div>' +
+          '<div class="field"><label for="compl">Complemento</label><input id="compl" data-campo="compl" autocomplete="address-line2" maxlength="60" placeholder="Apto, bloco, referência" value="' + val('compl') + '"></div>' +
         '</div>' +
       '</div>' +
       '<div class="panel stack-6">' +
@@ -323,6 +324,7 @@ document.addEventListener('vm:ready', function () {
       r.addEventListener('change', function () { pagamento = this.value; render(); });
     });
 
+    VMCampos.ligar(raiz);
     if (passo === 3 && pagamento === 'cartao') VMCartao.ligar(raiz);
 
     var selParcelas = document.getElementById('parcelas');
@@ -533,19 +535,23 @@ document.addEventListener('vm:ready', function () {
     if (totalBarra) totalBarra.textContent = VM.money(valores().total);
   }
 
-  function invalido(id) {
+  /* tipo de regra de cada campo (assets/js/campos.js) */
+  var TIPO_CAMPO = {
+    nome: 'nome', doc: 'doc', email: 'email', tel: 'tel', cep: 'cep',
+    rua: 'endereco', bairro: 'endereco', cidade: 'cidade', uf: 'uf', numero: 'numero',
+  };
+
+  /** '' se o campo vale; senão a mensagem a mostrar. */
+  function problema(id) {
     var el = document.getElementById(id);
-    if (!el) return false;
+    if (!el) return '';
     var v = el.value.trim();
-    var d = digitos(v);
-    if (!v) return true;
-    if (id === 'nome') return v.split(/\s+/).length < 2;
-    if (id === 'doc') return d.length !== 11 && d.length !== 14;
-    if (id === 'email') return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-    if (id === 'tel') return d.length < 10 || d.length > 11;
-    if (id === 'cep') return d.length !== 8;
-    if (id === 'uf') return !/^[A-Za-z]{2}$/.test(v);
-    return false;
+    if (!v) return 'Campo obrigatório.';
+    return VMCampos.erro(TIPO_CAMPO[id], v);
+  }
+
+  function invalido(id) {
+    return Boolean(problema(id));
   }
 
   function validar() {
@@ -559,9 +565,9 @@ document.addEventListener('vm:ready', function () {
     ['nome', 'doc', 'email', 'tel', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'uf'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
-      var ruim = obrigatorios.indexOf(id) !== -1 && invalido(id);
-      el.closest('.field').classList.toggle('is-invalid', ruim);
-      if (ruim && ok) { el.focus(); ok = false; }
+      var msg = obrigatorios.indexOf(id) !== -1 ? problema(id) : '';
+      VMCampos.marcar(el, msg);
+      if (msg && ok) { el.focus(); ok = false; }
     });
 
     if (!ok) { VM.toast('Confira os campos destacados.', 'warn'); return false; }
@@ -577,11 +583,11 @@ document.addEventListener('vm:ready', function () {
     }
 
     if (passo === 3 && pagamento === 'cartao') {
-      document.querySelectorAll('.cc-campos .field').forEach(function (f) { f.classList.remove('is-invalid'); });
+      document.querySelectorAll('.cc-campos input').forEach(function (i) { VMCampos.marcar(i, ''); });
       var erroCartao = VMCartao.validar();
       if (erroCartao) {
         var campoCartao = document.getElementById(erroCartao.campo);
-        campoCartao.closest('.field').classList.add('is-invalid');
+        VMCampos.marcar(campoCartao, erroCartao.msg);
         campoCartao.focus();
         VM.toast(erroCartao.msg, 'warn');
         return false;

@@ -171,6 +171,40 @@ function definirEmail({ chave, remetente }) {
   });
 }
 
+/* ------------------------------------------------- remetente (etiqueta) --- */
+
+/* Quem envia: vai na etiqueta e na nota do Melhor Envio. Não é segredo,
+   então fica sem cifra. Padrão com os dados públicos da loja; CNPJ e
+   inscrição estadual a loja confirma no painel. */
+const REMETENTE_PADRAO = {
+  nome: 'VM Click Materiais Elétricos',
+  cnpj: '17502553000145',
+  ie: '',
+  cnae: '',
+  email: 'contato@vmclick.com.br',
+  telefone: '4130892453',
+  cep: '',
+  endereco: 'Rua Amadeu do Amaral',
+  numero: '1602',
+  complemento: 'Loja 06',
+  bairro: 'Portão',
+  cidade: 'Curitiba',
+  uf: 'PR',
+  agenciaJadlog: '',
+};
+
+async function remetente() {
+  const p = (await lerBruto('remetente')) || {};
+  const r = Object.assign({}, REMETENTE_PADRAO, p);
+  if (!r.cep) r.cep = String(process.env.FRETE_CEP_ORIGEM || '').replace(/\D/g, '');
+  delete r.atualizadoEm;
+  return r;
+}
+
+function definirRemetente(dados) {
+  return alterar('remetente', () => Object.assign({}, dados));
+}
+
 /* ------------------------------------------------------- painel: status --- */
 
 /** O que o painel pode ver: ambiente, se há chave e o final dela. */
@@ -181,6 +215,7 @@ async function resumo() {
   const atualME = await melhorEnvio();
   const e = (await lerBruto('email')) || {};
   const atualEmail = await email();
+  const rem = await remetente();
 
   const porAmbiente = (bruto, campo) => {
     const r = {};
@@ -212,6 +247,7 @@ async function resumo() {
       ambienteOauth: process.env.MELHORENVIO_AMBIENTE === 'producao' ? 'producao' : 'sandbox',
       tokens: porAmbiente(m, 'token'),
     },
+    remetente: rem,
     email: {
       configurada: Boolean(decifrar(e.chave)),
       final: mascarar(decifrar(e.chave)),
@@ -273,6 +309,6 @@ function definirWebhook(ambiente, { id, token }) {
 
 module.exports = {
   AMBIENTES,
-  asaas, melhorEnvio, email, resumo, chaveAsaas, tokenMelhorEnvio,
-  definirAmbiente, definirSegredo, definirWebhook, definirEmail,
+  asaas, melhorEnvio, email, remetente, resumo, chaveAsaas, tokenMelhorEnvio,
+  definirAmbiente, definirSegredo, definirWebhook, definirEmail, definirRemetente,
 };

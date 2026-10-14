@@ -623,11 +623,18 @@
   function acoesDe(p) {
     var retirada = p.entrega && p.entrega.opcao && p.entrega.opcao.tipo === 'retirada';
     var b = [];
+    var transportadora = p.entrega && p.entrega.opcao && /^me-\d+$/.test(p.entrega.opcao.id || '');
+    var et = p.etiqueta || {};
+    if (transportadora && (p.status === 'pago' || p.status === 'separacao')) {
+      b.push(et.url
+        ? '<a class="bt bt--principal" href="' + esc(et.url) + '" target="_blank" rel="noopener">Imprimir etiqueta</a>'
+        : '<button class="bt bt--principal" type="button" data-acao-pedido="etiqueta">' + (et.id ? 'Continuar etiqueta' : 'Gerar etiqueta') + '</button>');
+    }
     if (p.status === 'pago') b.push('<button class="bt bt--linha" type="button" data-acao-pedido="separacao">Iniciar separação</button>');
     if (p.status === 'pago' || p.status === 'separacao') {
       b.push(retirada
         ? '<button class="bt bt--principal" type="button" data-acao-pedido="enviado">Pronto para retirada</button>'
-        : '<button class="bt bt--principal" type="button" data-abrir-envio>Marcar como enviado…</button>');
+        : '<button class="bt ' + (transportadora && !et.url ? 'bt--linha' : 'bt--principal') + '" type="button" data-abrir-envio>Marcar como enviado…</button>');
     }
     if (p.status === 'enviado') {
       b.push('<button class="bt bt--principal" type="button" data-acao-pedido="entregue">' + (retirada ? 'Cliente retirou' : 'Marcar como entregue') + '</button>');
@@ -689,6 +696,18 @@
       '<tr class="ped-total"><td colspan="2"><b>Total</b></td><td class="num"><b>' + moeda(p.total) + '</b></td></tr>' +
     '</tbody></table>' +
 
+    (p.etiqueta && p.etiqueta.id
+      ? '<div class="aviso">' +
+          '<b>Etiqueta Melhor Envio</b>' + (p.etiqueta.ambiente === 'sandbox' ? ' <span class="selo selo--aviso">teste</span>' : '') +
+          ' · ' + esc(p.etiqueta.protocolo || '') +
+          (p.etiqueta.preco ? ' · ' + moeda(p.etiqueta.preco) : '') +
+          ' · ' + esc({ carrinho: 'no carrinho (falta pagar)', paga: 'paga (falta gerar)', gerada: 'gerada' }[p.etiqueta.etapa] || p.etiqueta.etapa) +
+          (p.etiqueta.rastreio ? '<br>Rastreio: <b>' + esc(p.etiqueta.rastreio) + '</b>' : '') +
+          (p.etiqueta.comNota === false ? '<br><span class="sku">Sem nota fiscal (declaração de conteúdo) - só em teste.</span>' : '') +
+          (p.etiqueta.url ? '<br><span class="sku">O link abre logado no Melhor Envio (a etiqueta tem o endereço do cliente).</span>' : '') +
+        '</div>'
+      : '') +
+
     '<div id="ped-envio" hidden>' +
       '<div class="campo-linha campo-linha--2">' +
         '<div class="campo"><label for="ped-rastreio">Código de rastreio</label><input id="ped-rastreio" maxlength="60" placeholder="Ex.: AA123456789BR"></div>' +
@@ -721,10 +740,12 @@
     $('#modal-titulo').textContent = 'Pedido ' + p.numero;
     $('#modal-corpo').innerHTML = detalheHTML(p);
     $('#modal-corpo').dataset.pedido = p.id;
+    $('#modal-corpo').dataset.rastreioEtiqueta = (p.etiqueta && p.etiqueta.rastreio) || '';
   }
 
   var CONFIRMA = {
     cancelar: 'Cancelar este pedido? A cobrança pendente sai do Asaas e o cliente não consegue mais pagar.',
+    etiqueta: 'Comprar a etiqueta no Melhor Envio? O valor sai do saldo da conta.',
     entregue: null,
   };
 
@@ -734,6 +755,8 @@
 
     if (e.target.closest('[data-abrir-envio]')) {
       $('#ped-envio').hidden = false;
+      var pedidoAberto = $('#modal-corpo').dataset.rastreioEtiqueta;
+      if (pedidoAberto && !$('#ped-rastreio').value) $('#ped-rastreio').value = pedidoAberto;
       $('#ped-rastreio').focus();
       return;
     }
@@ -750,7 +773,7 @@
 
     var texto = bt.textContent;
     bt.disabled = true;
-    bt.textContent = 'Aguarde…';
+    bt.textContent = acao === 'etiqueta' ? 'Comprando etiqueta…' : 'Aguarde…';
 
     API.acaoPedido(id, acao, rastreio)
       .then(function (p) {
@@ -759,10 +782,17 @@
         carregarPedidos();
       })
       .catch(function (err) {
+        var mostrarErro = function () {
+          var msg = $('#modal-corpo [data-msg]');
+          if (msg) { msg.textContent = err.message; msg.className = 'ped-msg ped-msg--erro'; }
+        };
+        if (acao === 'etiqueta') {
+          API.pedido(id).then(function (p) { mostrarPedido(p); mostrarErro(); }).catch(mostrarErro);
+          return;
+        }
         bt.disabled = false;
         bt.textContent = texto;
-        var msg = $('#modal-corpo [data-msg]');
-        if (msg) { msg.textContent = err.message; msg.className = 'ped-msg ped-msg--erro'; }
+        mostrarErro();
       });
   });
 
@@ -894,7 +924,63 @@
     $('#integ-melhorenvio').innerHTML = cartaoIntegracao('melhorenvio');
     $('#integ-email').innerHTML = cartaoEmail();
     if (!$('#integ-olist').innerHTML) $('#integ-olist').innerHTML = cartaoOlist();
+    $('#integ-remetente').innerHTML = cartaoRemetente();
   }
+
+  /* ---- remetente das etiquetas (Melhor Envio) ---- */
+
+  var CAMPOS_REM = [
+    ['nome', 'Nome / razão social', 80, 'VM Click Materiais Elétricos'],
+    ['cnpj', 'CNPJ', 18, '00.000.000/0000-00'],
+    ['ie', 'Inscrição estadual', 20, 'ou deixe vazio se isento'],
+    ['cnae', 'CNAE (opcional)', 10, ''],
+    ['email', 'E-mail', 120, 'contato@vmclick.com.br'],
+    ['telefone', 'Telefone', 15, '(41) 3089-2453'],
+    ['cep', 'CEP', 9, '81320-450'],
+    ['endereco', 'Endereço', 120, 'Rua Amadeu do Amaral'],
+    ['numero', 'Número', 10, '1602'],
+    ['complemento', 'Complemento', 60, 'Loja 06'],
+    ['bairro', 'Bairro', 80, 'Portão'],
+    ['cidade', 'Cidade', 80, 'Curitiba'],
+    ['uf', 'UF', 2, 'PR'],
+    ['agenciaJadlog', 'Agência Jadlog no Melhor Envio (opcional)', 10, 'id da agência'],
+  ];
+
+  function cartaoRemetente() {
+    var r = integ.remetente || {};
+    return '<div class="integ__cab"><div><h3>Remetente das etiquetas <span class="selo selo--teal">Melhor Envio</span></h3>' +
+        '<p>Dados da loja que saem na etiqueta. Precisam bater com a nota fiscal emitida no Olist.</p></div></div>' +
+      '<div class="campo-linha campo-linha--2">' +
+        CAMPOS_REM.map(function (c) {
+          return '<div class="campo"><label for="rem-' + c[0] + '">' + c[1] + '</label>' +
+            '<input id="rem-' + c[0] + '" maxlength="' + c[2] + '" placeholder="' + esc(c[3]) + '" value="' + esc(r[c[0]] || '') + '"></div>';
+        }).join('') +
+      '</div>' +
+      '<div class="bt-linha" style="margin-top:14px"><button class="bt bt--principal" type="button" data-remetente="salvar">Salvar remetente</button></div>' +
+      '<p class="integ-msg" data-msg aria-live="polite"></p>';
+  }
+
+  $('#integ-remetente').addEventListener('click', function (e) {
+    var bt = e.target.closest('[data-remetente]');
+    if (!bt || bt.disabled || !integ) return;
+    var valor = {};
+    CAMPOS_REM.forEach(function (c) { valor[c[0]] = $('#rem-' + c[0]).value.trim(); });
+    var original = bt.textContent;
+    bt.disabled = true;
+    bt.textContent = 'Salvando…';
+    mensagem('remetente', '');
+    API.integracao('remetente', 'salvar', null, valor)
+      .then(function (r) {
+        bt.disabled = false; bt.textContent = original;
+        integ.remetente = r.situacao.remetente;
+        mensagem('remetente', r.mensagem, /ISENTO/.test(r.mensagem));
+        aviso('Remetente salvo.');
+      })
+      .catch(function (err) {
+        bt.disabled = false; bt.textContent = original;
+        mensagem('remetente', err.message, true);
+      });
+  });
 
   /* ---- Olist: o token que o site usa e as permissões dele ---- */
 

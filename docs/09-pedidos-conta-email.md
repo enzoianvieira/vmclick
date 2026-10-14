@@ -84,3 +84,35 @@ mesmo os de antes de "ter conta".
 Com `api/conta.js` e `api/pedidos-admin.js` o projeto tem **12 funções**, o
 teto do plano Hobby. A próxima rota nova precisa juntar duas existentes (por
 exemplo `produtos/buscar` e `produtos/detalhe`) ou o plano Pro.
+
+## Etiqueta de envio (Melhor Envio, pelo painel)
+
+No pedido pago com entrega por transportadora, o botão **Gerar etiqueta**:
+
+1. busca a **chave da NF-e** no Olist (pedido → nota autorizada);
+2. põe o envio no carrinho do Melhor Envio com **o serviço que o cliente
+   escolheu** no checkout, o remetente da loja e o pacote do catálogo;
+3. **compra com o saldo** da conta, gera a etiqueta;
+4. mostra **Imprimir etiqueta** (link privado: abre logado no Melhor Envio)
+   e grava o **rastreio**; o pedido passa para "em separação".
+
+Depois de postar, **Marcar como enviado** já vem com o rastreio da etiqueta:
+o cliente recebe o e-mail e o Olist recebe o código.
+
+Cada passo fica anotado no pedido. Se parar no meio (sem saldo, por
+exemplo), o próximo clique continua de onde parou — nunca compra duas vezes.
+
+**Pré-requisitos:**
+
+- **Token do Melhor Envio** com `shipping-calculate`, `cart-write`,
+  `shipping-checkout`, `shipping-generate`, `shipping-print` e
+  `shipping-tracking` (painel > Integrações > Melhor Envio). Para valer:
+  conta de **produção** com **saldo**.
+- **Olist:** permissão **Notas Fiscais → Leitura** no aplicativo, para ler a
+  chave da nota.
+- **Remetente das etiquetas** (painel > Integrações): CNPJ, inscrição
+  estadual e endereço, iguais aos da nota.
+- Em **produção a nota é obrigatória** (venda de empresa). Em sandbox, sem
+  nota, a etiqueta sai como declaração de conteúdo, só para testar.
+
+Frete "a combinar" e retirada na loja não têm etiqueta pelo painel.

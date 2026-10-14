@@ -237,6 +237,28 @@ async function acaoEmail(acao, valor) {
   throw new ErroPainel(400, 'Ação desconhecida');
 }
 
+/* Remetente das etiquetas: dados da loja que vão para o Melhor Envio. */
+async function acaoRemetente(acao, valor) {
+  if (acao !== 'salvar') throw new ErroPainel(400, 'Ação desconhecida');
+  const v = valor || {};
+  const t = (x, max) => String(x == null ? '' : x).replace(/[<>]/g, '').trim().slice(0, max);
+  const d = (x) => String(x || '').replace(/\D/g, '');
+  const r = {
+    nome: t(v.nome, 80), cnpj: d(v.cnpj), ie: t(v.ie, 20).toUpperCase(), cnae: d(v.cnae),
+    email: t(v.email, 120), telefone: d(v.telefone), cep: d(v.cep),
+    endereco: t(v.endereco, 120), numero: t(v.numero, 10), complemento: t(v.complemento, 60),
+    bairro: t(v.bairro, 80), cidade: t(v.cidade, 80), uf: t(v.uf, 2).toUpperCase(), agenciaJadlog: d(v.agenciaJadlog),
+  };
+  if (r.cnpj.length !== 14) throw new ErroPainel(400, 'CNPJ do remetente com 14 dígitos.');
+  if (r.cep.length !== 8) throw new ErroPainel(400, 'CEP do remetente com 8 dígitos.');
+  if (r.telefone.length < 10) throw new ErroPainel(400, 'Telefone do remetente com DDD.');
+  if (!/^[A-Z]{2}$/.test(r.uf)) throw new ErroPainel(400, 'UF do remetente com 2 letras.');
+  if (!r.nome || !r.endereco || !r.numero || !r.bairro || !r.cidade) throw new ErroPainel(400, 'Preencha nome e endereço completo do remetente.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) throw new ErroPainel(400, 'E-mail do remetente inválido.');
+  await config.definirRemetente(r);
+  return 'Remetente salvo.' + (r.ie ? '' : ' Sem inscrição estadual: a nota e a etiqueta vão como ISENTO - confirme com a contabilidade.');
+}
+
 /* Olist: conferir permissões e trocar o token depois de reautorizar. */
 async function acaoOlist(acao, valor) {
   const descrever = (p) => {
@@ -285,6 +307,11 @@ module.exports = protegido(async (req, res) => {
     const { integracao, acao, ambiente, valor } = lerCorpo(req);
 
     let mensagem;
+    if (integracao === 'remetente') {
+      mensagem = await acaoRemetente(acao, valor);
+      console.log(`[integracoes] ${req.sessao.u}: remetente ${acao}`);
+      return res.status(200).json({ ok: true, mensagem, situacao: await config.resumo() });
+    }
     if (integracao === 'olist') {
       mensagem = await acaoOlist(acao, valor);
       console.log(`[integracoes] ${req.sessao.u}: olist ${acao}`);

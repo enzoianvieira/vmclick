@@ -451,4 +451,61 @@ async function opcoesDeEntrega(cep, itens, subtotal) {
   };
 }
 
-module.exports = { cotar, opcoesDeEntrega, atendeEntregaLocal, catalogo, testarConexao, OPCAO_RETIRADA, ErroFrete };
+/* ==========================================================================
+   Chamada genérica (compra de etiqueta)
+   ========================================================================== */
+
+/* As mensagens de validação do Melhor Envio vêm em objetos aninhados
+   ({ error: { volumes: ["..."] } } ou { errors: { "orders.0": [...] } }). */
+function mensagemME(json) {
+  if (!json) return '';
+  const partes = [];
+  const juntar = (v) => {
+    if (!v) return;
+    if (typeof v === 'string') partes.push(v);
+    else if (Array.isArray(v)) v.forEach(juntar);
+    else if (typeof v === 'object') Object.values(v).forEach(juntar);
+  };
+  juntar(json.errors || json.error);
+  return partes.length ? partes.join(' ') : (json.message || '');
+}
+
+/**
+ * Chamada autenticada à API do Melhor Envio, no ambiente e com o token em
+ * uso. Para comprar etiqueta o token precisa, além de shipping-calculate,
+ * de cart-write, shipping-checkout, shipping-generate, shipping-print e
+ * shipping-tracking.
+ */
+async function chamarME(metodo, caminho, corpo) {
+  const { ambiente, token } = await conexao();
+  const res = await fetch(`${BASES[ambiente]}${caminho}`, {
+    method: metodo,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': process.env.MELHORENVIO_USER_AGENT || 'VM Click (contato@vmclick.com.br)',
+    },
+    body: corpo ? JSON.stringify(corpo) : undefined,
+    signal: AbortSignal.timeout(25_000),
+  });
+
+  const texto = await res.text();
+  let json = null;
+  try { json = JSON.parse(texto); } catch (e) { json = null; }
+
+  if (res.status === 401) throw new ErroFrete(502, 'Token do Melhor Envio recusado (vencido, revogado ou de outro ambiente).');
+  if (res.status === 403) {
+    throw new ErroFrete(502, 'O token do Melhor Envio não tem permissão para comprar etiqueta. Gere um token com cart-write, shipping-checkout, shipping-generate, shipping-print e shipping-tracking e cole no painel.');
+  }
+  if (!res.ok) {
+    console.error(`[frete] ${metodo} ${caminho} -> ${res.status}`, texto.slice(0, 400));
+    throw new ErroFrete(res.status === 422 ? 422 : 502, `Melhor Envio recusou: ${mensagemME(json) || res.status}`);
+  }
+  return { json, ambiente };
+}
+
+module.exports = {
+  cotar, opcoesDeEntrega, atendeEntregaLocal, catalogo, montarPacote, chamarME,
+  testarConexao, OPCAO_RETIRADA, ErroFrete,
+};

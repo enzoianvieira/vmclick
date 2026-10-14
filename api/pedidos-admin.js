@@ -9,6 +9,7 @@
  *        acao "entregue"   enviado -> entregue (ou retirado)
  *        acao "cancelar"   aguardando/vencido -> cancelado, e a cobrança sai do Asaas
  *        acao "olist"      lança no Olist de novo, quando o envio automático falhou
+ *        acao "etiqueta"   compra e gera a etiqueta no Melhor Envio (_etiqueta.js)
  *
  * Aqui aparecem nome, CPF, e-mail, telefone e endereço: só o painel, com
  * sessão, chega neste endpoint.
@@ -17,6 +18,8 @@
 const { protegido } = require('./_sessao.js');
 const pedidos = require('./_pedido.js');
 const asaas = require('./_asaas.js');
+const etiqueta = require('./_etiqueta.js');
+const { ErroFrete } = require('./_frete.js');
 
 const LIMITE_LISTA = 300;
 
@@ -73,7 +76,17 @@ module.exports = protegido(async (req, res) => {
     if (!atual) return res.status(404).json({ erro: 'Pedido não encontrado.' });
 
     let p;
-    if (acao === 'olist') {
+    if (acao === 'etiqueta') {
+      try {
+        p = await etiqueta.gerar(id);
+      } catch (e) {
+        if (e instanceof etiqueta.ErroEtiqueta || e instanceof ErroFrete) {
+          /* devolve o pedido junto: o andamento parcial (carrinho, compra) já foi anotado */
+          return res.status(e.status >= 400 && e.status < 600 ? e.status : 502).json({ erro: e.message, pedido: await pedidos.ler(id) });
+        }
+        throw e;
+      }
+    } else if (acao === 'olist') {
       if (['aguardando', 'vencido', 'cancelado', 'falhou', 'recusado'].includes(atual.status)) {
         return res.status(409).json({ erro: 'Só pedido pago vai para o Olist.' });
       }
@@ -84,6 +97,10 @@ module.exports = protegido(async (req, res) => {
         await asaas.cancelarCobranca(atual.asaas.cobranca);
       }
       const extra = {};
+      /* sem rastreio digitado, vale o da etiqueta gerada pelo painel */
+      if (acao === 'enviado' && !(rastreio && (rastreio.codigo || rastreio.url)) && atual.etiqueta && atual.etiqueta.rastreio) {
+        extra.rastreio = { codigo: limpar(atual.etiqueta.rastreio, 60), url: '' };
+      }
       if (acao === 'enviado' && rastreio && (rastreio.codigo || rastreio.url)) {
         const url = limpar(rastreio.url, 300);
         extra.rastreio = {

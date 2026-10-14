@@ -17,6 +17,22 @@
 <link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
 <script>document.documentElement.classList.add('js-anim');</script>
 <style>
+  .andamento { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+  .andamento li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; position: relative; padding-bottom: 20px; }
+  .andamento li:last-child { padding-bottom: 0; }
+  .andamento li::before { content: ""; position: absolute; left: 15px; top: 30px; bottom: 0; width: 2px; background: var(--n-200); }
+  .andamento li:last-child::before { display: none; }
+  .andamento li.is-feito::before { background: var(--success); }
+  .andamento__n { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--n-100); color: var(--text-subtle); font-weight: 700; font-size: 13px; position: relative; z-index: 1; }
+  .andamento__n svg { width: 16px; height: 16px; }
+  .is-feito .andamento__n { background: var(--success); color: #fff; }
+  .is-atual .andamento__n { background: var(--teal-700); color: #fff; box-shadow: 0 0 0 4px var(--teal-100); }
+  .andamento__t { display: flex; flex-direction: column; gap: 2px; padding-top: 5px; }
+  .andamento__t b { font-size: var(--fs-sm); color: var(--text); }
+  .andamento__t span { font-size: 13px; color: var(--text-muted); }
+  .is-futuro .andamento__t b { color: var(--text-subtle); font-weight: 600; }
+  .rastreio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 6px; }
+  .rastreio code { font-family: var(--font-mono, monospace); font-size: 14px; background: var(--bg-subtle); padding: 4px 8px; border-radius: 6px; color: var(--text); }
   .pedido-pix { display: grid; gap: var(--sp-5); justify-items: center; text-align: center; }
   .pedido-pix img { width: 220px; height: 220px; image-rendering: pixelated; border: 1px solid var(--border); border-radius: var(--r-md); background: #fff; }
   .pedido-codigo { width: 100%; font-family: var(--font-mono, monospace); font-size: var(--fs-xs); word-break: break-all;
@@ -176,15 +192,47 @@ document.addEventListener('vm:ready', function () {
     '</div>';
   }
 
-  function painelPago(p) {
-    var entrega = p.entrega.tipo === 'retirada'
-      ? 'Avisaremos quando estiver pronto para retirar na loja (R. Amadeu do Amaral, 1602 - Portão).'
-      : (p.freteACombinar
-          ? 'A equipe entra em contato para combinar valor e prazo da entrega.'
-          : 'Agora separamos e embalamos. O prazo de entrega conta a partir da postagem.');
-    return caixaFinal('check', '<span class="badge badge--ok">Pagamento confirmado</span>',
-      'Recebemos seu pagamento',
-      'Pedido <b class="mono">' + esc(p.numero) + '</b> · ' + VM.money(p.total) + '. ' + entrega);
+  function quando(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ', ' +
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /* Pago em diante: a linha do tempo do pedido, com o rastreio quando a
+     loja informar. Na retirada, "enviado" é "pronto para retirar". */
+  function painelAndamento(p) {
+    var retirada = p.entrega.tipo === 'retirada';
+    var ordem = ['pago', 'separacao', 'enviado', 'entregue'];
+    var atual = ordem.indexOf(p.status);
+    var r = p.rastreio;
+    var urlOk = r && /^https:\/\//i.test(r.url || '');
+
+    var etapas = [
+      { t: 'Pagamento confirmado', d: quando(p.pagoEm) },
+      { t: 'Em separação', d: 'A loja separa e embala os produtos' },
+      retirada
+        ? { t: 'Pronto para retirar', d: p.enviadoEm ? quando(p.enviadoEm) + ' · R. Amadeu do Amaral, 1602 - Portão' : 'Avisamos quando estiver separado' }
+        : { t: 'Enviado', d: p.enviadoEm ? quando(p.enviadoEm) : (p.freteACombinar ? 'A loja combina valor e prazo com você antes do envio' : 'O prazo de entrega conta a partir da postagem') },
+      { t: retirada ? 'Retirado' : 'Entregue', d: p.entregueEm ? quando(p.entregueEm) : '' },
+    ];
+
+    var lista = etapas.map(function (e, i) {
+      var cls = i < atual ? 'is-feito' : (i === atual ? (i === 3 ? 'is-feito' : 'is-atual') : 'is-futuro');
+      var extra = '';
+      if (i === 2 && !retirada && r && (r.codigo || urlOk) && atual >= 2) {
+        extra = '<div class="rastreio">' + (r.codigo ? '<code>' + esc(r.codigo) + '</code>' : '') +
+          (urlOk ? '<a class="btn btn--secondary btn--sm" href="' + esc(r.url) + '" target="_blank" rel="noopener">Rastrear entrega</a>' : '') + '</div>';
+      }
+      return '<li class="' + cls + '"><span class="andamento__n">' + (cls === 'is-feito' ? VM.icon('check') : (i + 1)) + '</span>' +
+        '<span class="andamento__t"><b>' + e.t + '</b>' + (e.d ? '<span>' + esc(e.d) + '</span>' : '') + extra + '</span></li>';
+    }).join('');
+
+    return '<div class="checkout-layout"><div class="panel stack-6">' +
+      '<h3>Acompanhe seu pedido</h3>' +
+      '<ol class="andamento">' + lista + '</ol>' +
+      '<p class="muted" style="font-size:14px;margin:0">Dúvidas sobre a entrega? <a href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Fale com a loja</a>.</p>' +
+      '</div>' + resumo(p) + '</div>';
   }
 
   function painelEncerrado(p) {
@@ -203,9 +251,9 @@ document.addEventListener('vm:ready', function () {
   function pintar(p) {
     document.getElementById('titulo-pedido').textContent = 'Pedido ' + p.numero;
 
-    if (p.status === 'pago') {
-      document.getElementById('sub-pedido').textContent = 'Obrigado pela compra!';
-      raiz.innerHTML = painelPago(p);
+    if (['pago', 'separacao', 'enviado', 'entregue'].indexOf(p.status) !== -1) {
+      document.getElementById('sub-pedido').textContent = p.status === 'entregue' ? 'Pedido concluído. Obrigado pela compra!' : 'Obrigado pela compra!';
+      raiz.innerHTML = painelAndamento(p);
       return;
     }
     if (p.status !== 'aguardando') {

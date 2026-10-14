@@ -23,14 +23,50 @@
 </header>
 
 <nav class="abas" role="tablist" aria-label="Seções do painel">
-  <button role="tab" aria-selected="true"  data-tela="produtos">Produtos</button>
+  <button role="tab" aria-selected="true"  data-tela="pedidos">Pedidos</button>
+  <button role="tab" aria-selected="false" data-tela="produtos">Produtos</button>
   <button role="tab" aria-selected="false" data-tela="banners">Banners</button>
   <button role="tab" aria-selected="false" data-tela="blog">Blog</button>
   <button role="tab" aria-selected="false" data-tela="integracoes">Integrações</button>
 </nav>
 
+<!-- ====================================================== PEDIDOS -->
+<main class="tela" id="tela-pedidos">
+  <div class="tela-cab">
+    <div>
+      <h2>Pedidos do site</h2>
+      <p>Pedido pago vai sozinho para o Olist, onde saem a nota, a separação e a etiqueta. Aqui você acompanha e avisa o cliente de cada etapa.</p>
+    </div>
+    <div class="bt-linha">
+      <button class="bt bt--linha" type="button" id="atualizar-pedidos">Atualizar</button>
+    </div>
+  </div>
+
+  <div class="ped-barra">
+    <div class="ped-filtros" id="ped-filtros" role="group" aria-label="Filtrar pedidos"></div>
+    <label class="sr-only" for="ped-busca">Buscar pedido</label>
+    <input class="ped-busca" id="ped-busca" type="search" placeholder="Nº do pedido ou nome do cliente">
+  </div>
+
+  <div class="tab-wrap">
+    <table class="dados">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Cliente</th>
+          <th>Entrega</th>
+          <th class="num">Total</th>
+          <th>Situação</th>
+          <th>Olist</th>
+        </tr>
+      </thead>
+      <tbody id="lista-pedidos"><tr><td colspan="6"><div class="vazio">Carregando pedidos…</div></td></tr></tbody>
+    </table>
+  </div>
+</main>
+
 <!-- ====================================================== PRODUTOS -->
-<main class="tela" id="tela-produtos">
+<main class="tela" id="tela-produtos" hidden>
   <div class="tela-cab">
     <div>
       <h2>Produtos do site</h2>
@@ -125,7 +161,7 @@
 <!-- ====================================================== MODAIS -->
 <div class="modal" id="modal" hidden>
   <div class="modal__fundo" data-fechar></div>
-  <div class="modal__caixa" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+  <div class="modal__caixa" id="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
     <div class="modal__cab">
       <h3 id="modal-titulo"></h3>
       <button class="bt bt--mini bt--linha" type="button" data-fechar>Fechar</button>

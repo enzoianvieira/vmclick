@@ -250,3 +250,35 @@ table.dados .nome { color: var(--text); font-weight: var(--fw-medium); }
 .integ-msg { font-size: 13px; margin: 0; }
 .integ-msg--ok { color: var(--success); }
 .integ-msg--erro { color: var(--danger); }
+
+/* --------------------------------------------------------------- PEDIDOS -- */
+.ped-barra { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: space-between; margin-bottom: var(--sp-4); }
+.ped-filtros { display: flex; flex-wrap: wrap; gap: 6px; }
+.ped-filtro {
+  border: 1px solid var(--border); background: var(--n-0); border-radius: 99px;
+  padding: 6px 12px; font: inherit; font-size: 13px; font-weight: var(--fw-semibold); color: var(--text-muted); cursor: pointer;
+}
+.ped-filtro .conta { background: var(--n-100); color: var(--text-muted); padding: 1px 7px; border-radius: 99px; margin-left: 4px; font-size: 12px; }
+.ped-filtro[aria-pressed="true"] { background: var(--teal-700); border-color: var(--teal-700); color: #fff; }
+.ped-filtro[aria-pressed="true"] .conta { background: rgba(255,255,255,.2); color: #fff; }
+.ped-busca {
+  flex: 0 1 300px; min-width: 200px; padding: 9px 12px; font: inherit; font-size: 14px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--n-0);
+}
+.ped-linha { cursor: pointer; }
+.ped-linha:focus-visible { outline: 2px solid var(--teal-500); outline-offset: -2px; }
+
+.modal__caixa--largo { width: min(100%, 860px); }
+.ped-topo { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.ped-grade { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.ped-grade section { background: var(--n-50); border: 1px solid var(--n-100); border-radius: var(--r-md); padding: 12px 14px; }
+.ped-grade h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-subtle); }
+.ped-grade p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text-body); word-break: break-word; }
+table.dados.ped-itens { min-width: 0; }
+.ped-total td { background: var(--n-50); }
+.ped-acoes { padding-top: var(--sp-2); border-top: 1px solid var(--n-100); }
+.ped-historico summary { cursor: pointer; font-size: 13px; font-weight: var(--fw-semibold); color: var(--text-muted); }
+.ped-historico ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+.ped-msg { margin: 0; font-size: 13px; }
+.ped-msg--erro { color: var(--danger); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

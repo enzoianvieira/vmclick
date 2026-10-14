@@ -112,4 +112,57 @@ async function incrementar(chave, segundos) {
   return reg.v;
 }
 
-module.exports = { disponivel, ler, gravar, gravarSeNovo, incrementar };
+/* --------------------------------------------------------------- índices --- */
+
+/* Listas ordenadas (sorted set do Redis): o painel lista os pedidos mais
+   novos primeiro, e "Meus pedidos" lista os de um cliente. O membro é o id;
+   o score, o momento da criação. */
+
+async function indexar(chave, membro, score) {
+  if (credenciaisKV()) {
+    await kv(['ZADD', chave, score, membro]);
+    return;
+  }
+  const dados = lerLocal();
+  const lista = (dados[chave] && dados[chave].v) || [];
+  const sem = lista.filter((x) => x.m !== membro);
+  sem.push({ m: membro, s: Number(score) });
+  dados[chave] = { v: sem, exp: 0 };
+  gravarLocal(dados);
+}
+
+/** Membros do mais novo ao mais velho, de `inicio` a `fim` (inclusive). */
+async function listarIndice(chave, inicio, fim) {
+  if (credenciaisKV()) {
+    return (await kv(['ZRANGE', chave, inicio, fim, 'REV'])) || [];
+  }
+  const reg = lerLocal()[chave];
+  const lista = ((reg && reg.v) || []).slice().sort((a, b) => b.s - a.s).map((x) => x.m);
+  return lista.slice(inicio, fim + 1);
+}
+
+/** Vários objetos de uma vez (MGET); ausentes voltam null. */
+async function lerVarios(chaves) {
+  if (!chaves.length) return [];
+  if (credenciaisKV()) {
+    const r = await kv(['MGET'].concat(chaves));
+    return (r || []).map((x) => (x == null ? null : JSON.parse(x)));
+  }
+  const dados = lerLocal();
+  return chaves.map((c) => (vivoLocal(dados[c]) ? dados[c].v : null));
+}
+
+async function apagar(chave) {
+  if (credenciaisKV()) {
+    await kv(['DEL', chave]);
+    return;
+  }
+  const dados = lerLocal();
+  delete dados[chave];
+  gravarLocal(dados);
+}
+
+module.exports = {
+  disponivel, ler, gravar, gravarSeNovo, incrementar, apagar,
+  indexar, listarIndice, lerVarios,
+};

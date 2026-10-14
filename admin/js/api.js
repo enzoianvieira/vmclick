@@ -77,6 +77,22 @@ window.API = (function () {
       return pedir('/api/produtos/detalhe?id=' + encodeURIComponent(id));
     },
 
+    /* -------------------------------------------------------- pedidos --- */
+    pedidos() {
+      return pedir('/api/pedidos-admin');
+    },
+
+    pedido(id) {
+      return pedir('/api/pedidos-admin?id=' + encodeURIComponent(id));
+    },
+
+    acaoPedido(id, acao, rastreio) {
+      return pedir('/api/pedidos-admin', {
+        method: 'POST',
+        body: JSON.stringify({ id: id, acao: acao, rastreio: rastreio }),
+      });
+    },
+
     /* ---------------------------------------------------- integrações --- */
     integracoes() {
       return pedir('/api/integracoes');

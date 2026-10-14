@@ -87,6 +87,8 @@
   }
   function fecharModal() {
     $('#modal').hidden = true;
+    $('#modal-caixa').classList.remove('modal__caixa--largo');
+    delete $('#modal-corpo').dataset.pedido;
     $('#modal-corpo').innerHTML = '';
     document.body.style.overflow = '';
   }
@@ -106,6 +108,7 @@
       /* busca a situação toda vez que a aba abre: outra pessoa pode ter
          mudado o modo em outro computador */
       if (b.dataset.tela === 'integracoes') carregarIntegracoes();
+      if (b.dataset.tela === 'pedidos') carregarPedidos();
     });
   });
 
@@ -487,7 +490,284 @@
   });
 
   /* ====================================================================== */
-  /* 7. TELA: INTEGRAÇÕES                                                   */
+  /* 7. TELA: PEDIDOS                                                       */
+  /* ====================================================================== */
+
+  /* Os pedidos vêm do servidor a cada abertura da aba e no "Atualizar":
+     nada disso passa pelo rascunho nem pelo "Publicar". */
+
+  var listaPedidos = [];
+  var filtroPedidos = 'expedir';
+
+  var SITUACAO = {
+    aguardando: { t: 'Aguardando pagamento', c: 'selo--neutro' },
+    pago:       { t: 'Pago · separar',       c: 'selo--aviso' },
+    separacao:  { t: 'Em separação',         c: 'selo--teal' },
+    enviado:    { t: 'Enviado',              c: 'selo--teal', retirada: 'Pronto p/ retirar' },
+    entregue:   { t: 'Entregue',             c: 'selo--ok', retirada: 'Retirado' },
+    vencido:    { t: 'Vencido',              c: 'selo--neutro' },
+    cancelado:  { t: 'Cancelado',            c: 'selo--neutro' },
+    falhou:     { t: 'Falhou',               c: 'selo--neutro' },
+    recusado:   { t: 'Cartão recusado',      c: 'selo--neutro' },
+    estornado:  { t: 'Estornado',            c: 'selo--alerta' },
+    contestado: { t: 'Contestado',           c: 'selo--alerta' },
+  };
+
+  var FILTROS = [
+    { id: 'expedir',    t: 'Para expedir',  s: ['pago', 'separacao'] },
+    { id: 'aguardando', t: 'Aguardando pagamento', s: ['aguardando'] },
+    { id: 'enviados',   t: 'Enviados',      s: ['enviado'] },
+    { id: 'entregues',  t: 'Entregues',     s: ['entregue'] },
+    { id: 'problemas',  t: 'Estorno/contestação', s: ['estornado', 'contestado'] },
+    { id: 'todos',      t: 'Todos',         s: null },
+  ];
+
+  var FORMA = { pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão' };
+
+  function seloSituacao(status, tipoEntrega) {
+    var s = SITUACAO[status] || { t: status, c: 'selo--neutro' };
+    var texto = tipoEntrega === 'retirada' && s.retirada ? s.retirada : s.t;
+    return '<span class="selo ' + s.c + '">' + esc(texto) + '</span>';
+  }
+
+  function dataHora(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderFiltros() {
+    $('#ped-filtros').innerHTML = FILTROS.map(function (f) {
+      var n = f.s ? listaPedidos.filter(function (p) { return f.s.indexOf(p.status) !== -1; }).length : listaPedidos.length;
+      return '<button type="button" class="ped-filtro" data-filtro="' + f.id + '" aria-pressed="' + (f.id === filtroPedidos) + '">' +
+        esc(f.t) + ' <span class="conta">' + n + '</span></button>';
+    }).join('');
+  }
+
+  function renderPedidos() {
+    renderFiltros();
+    var f = FILTROS.filter(function (x) { return x.id === filtroPedidos; })[0];
+    var termo = ($('#ped-busca').value || '').trim().toLowerCase();
+    var visiveis = listaPedidos.filter(function (p) {
+      if (f.s && f.s.indexOf(p.status) === -1) return false;
+      if (!termo) return true;
+      return (p.numero + ' ' + (p.cliente || '')).toLowerCase().indexOf(termo) !== -1;
+    });
+
+    if (!visiveis.length) {
+      $('#lista-pedidos').innerHTML = '<tr><td colspan="6"><div class="vazio">' +
+        (listaPedidos.length ? 'Nenhum pedido neste filtro.' : 'Nenhum pedido ainda. Eles aparecem aqui assim que alguém finaliza uma compra no site.') +
+        '</div></td></tr>';
+      return;
+    }
+
+    $('#lista-pedidos').innerHTML = visiveis.map(function (p) {
+      return '<tr class="ped-linha" data-pedido="' + esc(p.id) + '" tabindex="0">' +
+        '<td><span class="nome">' + esc(p.numero) + '</span><br><span class="sku">' + esc(dataHora(p.criadoEm)) + '</span></td>' +
+        '<td><span class="nome">' + esc(p.cliente) + '</span><br><span class="sku">' + esc(p.local) + '</span></td>' +
+        '<td>' + esc(p.entrega || '') + '<br><span class="sku">' + p.itens + (p.itens === 1 ? ' item' : ' itens') + '</span></td>' +
+        '<td class="num">' + moeda(p.total) + '<br><span class="sku">' + esc(FORMA[p.forma] || p.forma) + '</span></td>' +
+        '<td>' + seloSituacao(p.status, p.tipoEntrega) + '</td>' +
+        '<td>' + (p.olist ? '<span class="sku">' + esc(p.olist) + '</span>'
+          : (p.olistErro ? '<span class="selo selo--alerta">erro</span>' : '<span class="sku">—</span>')) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function carregarPedidos() {
+    API.pedidos()
+      .then(function (r) {
+        listaPedidos = r.pedidos || [];
+        /* nada para expedir: abre direto em "Todos" */
+        if (filtroPedidos === 'expedir' && !listaPedidos.some(function (p) { return p.status === 'pago' || p.status === 'separacao'; })) {
+          filtroPedidos = 'todos';
+        }
+        renderPedidos();
+      })
+      .catch(function (err) {
+        $('#lista-pedidos').innerHTML = '<tr><td colspan="6"><div class="aviso aviso--erro">' + esc(err.message) + '</div></td></tr>';
+      });
+  }
+
+  $('#ped-filtros').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-filtro]');
+    if (!b) return;
+    filtroPedidos = b.dataset.filtro;
+    renderPedidos();
+  });
+  $('#ped-busca').addEventListener('input', renderPedidos);
+  $('#atualizar-pedidos').addEventListener('click', carregarPedidos);
+
+  function abrirLinha(e) {
+    var tr = e.target.closest('[data-pedido]');
+    if (!tr) return;
+    if (e.type === 'keydown' && e.key !== 'Enter') return;
+    abrirPedido(tr.dataset.pedido);
+  }
+  $('#lista-pedidos').addEventListener('click', abrirLinha);
+  $('#lista-pedidos').addEventListener('keydown', abrirLinha);
+
+  /* ---- detalhe ---- */
+
+  function doc(d) {
+    d = String(d || '');
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    return d;
+  }
+  function fone(t) {
+    t = String(t || '');
+    return t.length === 11 ? t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : t.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  }
+
+  function acoesDe(p) {
+    var retirada = p.entrega && p.entrega.opcao && p.entrega.opcao.tipo === 'retirada';
+    var b = [];
+    if (p.status === 'pago') b.push('<button class="bt bt--linha" type="button" data-acao-pedido="separacao">Iniciar separação</button>');
+    if (p.status === 'pago' || p.status === 'separacao') {
+      b.push(retirada
+        ? '<button class="bt bt--principal" type="button" data-acao-pedido="enviado">Pronto para retirada</button>'
+        : '<button class="bt bt--principal" type="button" data-abrir-envio>Marcar como enviado…</button>');
+    }
+    if (p.status === 'enviado') {
+      b.push('<button class="bt bt--principal" type="button" data-acao-pedido="entregue">' + (retirada ? 'Cliente retirou' : 'Marcar como entregue') + '</button>');
+    }
+    if (p.status === 'aguardando' || p.status === 'vencido') {
+      b.push('<button class="bt bt--perigo" type="button" data-acao-pedido="cancelar">Cancelar pedido</button>');
+    }
+    var pagoOuDepois = ['pago', 'separacao', 'enviado', 'entregue'].indexOf(p.status) !== -1;
+    if (pagoOuDepois && !(p.olist && p.olist.id)) {
+      b.push('<button class="bt bt--linha" type="button" data-acao-pedido="olist">Enviar ao Olist</button>');
+    }
+    return b.join('');
+  }
+
+  function detalheHTML(p) {
+    var e = p.entrega || {};
+    var op = e.opcao || {};
+    var retirada = op.tipo === 'retirada';
+    var c = p.cliente || {};
+    var tel = String(c.tel || '');
+
+    var endereco = retirada
+      ? 'Retirada na loja (Portão)'
+      : esc([e.rua, e.numero].filter(Boolean).join(', ') + (e.compl ? ' - ' + e.compl : '')) + '<br>' +
+        esc([e.bairro, [e.cidade, e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ')) + '<br>CEP ' + esc(String(e.cep || '').replace(/(\d{5})(\d{3})/, '$1-$2'));
+
+    return '' +
+    '<div class="ped-topo">' + seloSituacao(p.status, op.tipo) +
+      '<span class="sku">Criado em ' + esc(dataHora(p.criadoEm)) + (p.pagoEm ? ' · pago em ' + esc(dataHora(p.pagoEm)) : '') + '</span>' +
+    '</div>' +
+
+    (p.olistErro && !(p.olist && p.olist.id)
+      ? '<div class="aviso aviso--alerta"><b>Não foi para o Olist.</b> ' + esc(p.olistErro.mensagem) + '</div>'
+      : '') +
+
+    '<div class="ped-grade">' +
+      '<section><h4>Cliente</h4><p><b>' + esc(c.nome) + '</b><br>' + esc(doc(c.doc)) +
+        '<br><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' +
+        '<br><a href="https://wa.me/55' + esc(tel) + '" target="_blank" rel="noopener">' + esc(fone(tel)) + '</a></p></section>' +
+      '<section><h4>Entrega</h4><p><b>' + esc(op.servico || '') + '</b>' +
+        (op.transportadora && op.tipo === 'transportadora' ? ' · ' + esc(op.transportadora) : '') +
+        (e.aCombinar ? '<br><span class="selo selo--aviso">frete a combinar</span>' : '') +
+        '<br>' + endereco +
+        (p.rastreio && (p.rastreio.codigo || p.rastreio.url)
+          ? '<br>Rastreio: <b>' + esc(p.rastreio.codigo || '') + '</b>' + (p.rastreio.url ? ' · <a href="' + esc(p.rastreio.url) + '" target="_blank" rel="noopener">abrir</a>' : '')
+          : '') +
+      '</p></section>' +
+      '<section><h4>Pagamento</h4><p><b>' + esc(FORMA[p.forma] || p.forma) + '</b>' + (p.parcelas > 1 ? ' em ' + p.parcelas + 'x' : '') +
+        '<br>Olist: ' + (p.olist && p.olist.numero ? '<b>pedido ' + esc(p.olist.numero) + '</b>' : '—') + '</p></section>' +
+    '</div>' +
+
+    '<table class="dados ped-itens"><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr></thead><tbody>' +
+      (p.itens || []).map(function (i) {
+        return '<tr><td><span class="nome">' + esc(i.nome) + '</span><br><span class="sku">' + esc(i.sku) + '</span></td>' +
+          '<td class="num">' + i.qtd + '</td><td class="num">' + moeda(i.sub) + '</td></tr>';
+      }).join('') +
+      '<tr><td colspan="2">Frete</td><td class="num">' + (e.aCombinar ? 'a combinar' : moeda(p.frete)) + '</td></tr>' +
+      (p.desconto ? '<tr><td colspan="2">Desconto Pix</td><td class="num">− ' + moeda(p.desconto) + '</td></tr>' : '') +
+      '<tr class="ped-total"><td colspan="2"><b>Total</b></td><td class="num"><b>' + moeda(p.total) + '</b></td></tr>' +
+    '</tbody></table>' +
+
+    '<div id="ped-envio" hidden>' +
+      '<div class="campo-linha campo-linha--2">' +
+        '<div class="campo"><label for="ped-rastreio">Código de rastreio</label><input id="ped-rastreio" maxlength="60" placeholder="Ex.: AA123456789BR"></div>' +
+        '<div class="campo"><label for="ped-rastreio-url">Link de rastreio (opcional)</label><input id="ped-rastreio-url" maxlength="300" placeholder="https://…"></div>' +
+      '</div>' +
+      '<span class="dica">O cliente vê o código na página do pedido. Também vai para o pedido no Olist.</span>' +
+      '<div class="bt-linha" style="margin-top:10px"><button class="bt bt--principal" type="button" data-acao-pedido="enviado">Confirmar envio</button></div>' +
+    '</div>' +
+
+    '<div class="bt-linha ped-acoes">' + acoesDe(p) + '</div>' +
+
+    '<details class="ped-historico"><summary>Histórico</summary><ul>' +
+      (p.historico || []).map(function (h) {
+        return '<li><span class="sku">' + esc(dataHora(h.em)) + '</span> ' + esc((SITUACAO[h.status] || { t: h.status }).t) +
+          ' <span class="sku">(' + esc(h.origem) + ')</span></li>';
+      }).join('') +
+    '</ul></details>' +
+    '<p class="ped-msg" data-msg aria-live="polite"></p>';
+  }
+
+  function abrirPedido(id) {
+    abrirModal('Pedido', '<div class="vazio">Carregando…</div>');
+    $('#modal-caixa').classList.add('modal__caixa--largo');
+    API.pedido(id)
+      .then(function (p) { mostrarPedido(p); })
+      .catch(function (err) { $('#modal-corpo').innerHTML = '<div class="aviso aviso--erro">' + esc(err.message) + '</div>'; });
+  }
+
+  function mostrarPedido(p) {
+    $('#modal-titulo').textContent = 'Pedido ' + p.numero;
+    $('#modal-corpo').innerHTML = detalheHTML(p);
+    $('#modal-corpo').dataset.pedido = p.id;
+  }
+
+  var CONFIRMA = {
+    cancelar: 'Cancelar este pedido? A cobrança pendente sai do Asaas e o cliente não consegue mais pagar.',
+    entregue: null,
+  };
+
+  $('#modal-corpo').addEventListener('click', function (e) {
+    var id = $('#modal-corpo').dataset.pedido;
+    if (!id) return;
+
+    if (e.target.closest('[data-abrir-envio]')) {
+      $('#ped-envio').hidden = false;
+      $('#ped-rastreio').focus();
+      return;
+    }
+
+    var bt = e.target.closest('[data-acao-pedido]');
+    if (!bt || bt.disabled) return;
+    var acao = bt.dataset.acaoPedido;
+    if (CONFIRMA[acao] && !confirm(CONFIRMA[acao])) return;
+
+    var rastreio = null;
+    if (acao === 'enviado' && $('#ped-rastreio')) {
+      rastreio = { codigo: $('#ped-rastreio').value.trim(), url: $('#ped-rastreio-url').value.trim() };
+    }
+
+    var texto = bt.textContent;
+    bt.disabled = true;
+    bt.textContent = 'Aguarde…';
+
+    API.acaoPedido(id, acao, rastreio)
+      .then(function (p) {
+        mostrarPedido(p);
+        aviso('Pedido ' + p.numero + ' atualizado.');
+        carregarPedidos();
+      })
+      .catch(function (err) {
+        bt.disabled = false;
+        bt.textContent = texto;
+        var msg = $('#modal-corpo [data-msg]');
+        if (msg) { msg.textContent = err.message; msg.className = 'ped-msg ped-msg--erro'; }
+      });
+  });
+
+  /* ====================================================================== */
+  /* 7b. TELA: INTEGRAÇÕES                                                  */
   /* ====================================================================== */
 
   /* Chaves do Asaas e do Melhor Envio, uma por ambiente, e o modo em uso.
@@ -763,6 +1043,7 @@
   API.sessao().then(function (s) {
     if (!s) { location.replace('/admin/'); return; }
     $('#quem').textContent = s.usuario;
+    carregarPedidos();
     renderProdutos();
     renderBanners();
     renderBlog();

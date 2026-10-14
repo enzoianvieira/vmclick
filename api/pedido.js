@@ -315,6 +315,7 @@ async function criar(req, res) {
     historico: [{ em: new Date().toISOString(), status: 'aguardando', origem: 'checkout' }],
   };
   await pedidos.gravar(pedido);
+  await pedidos.registrar(pedido);
 
   let cobranca;
   try {

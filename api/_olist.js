@@ -90,9 +90,49 @@ async function olistGet(caminho) {
     throw new ErroOlist(429, 'Limite de chamadas do Olist atingido. Tente de novo em alguns segundos.');
   }
   if (!res.ok) {
-    throw new ErroOlist(res.status, `Olist respondeu ${res.status}`);
+    let msg = '';
+    try {
+      const j = await res.json();
+      msg = (j && j.mensagem) || '';
+      if (j && Array.isArray(j.detalhes)) msg += ' - ' + j.detalhes.map((d) => `${d.campo}: ${d.mensagem}`).join('; ');
+    } catch (e) { /* corpo sem JSON */ }
+    throw new ErroOlist(res.status, `Olist respondeu ${res.status}${msg ? ': ' + msg : ''}`);
   }
   return res.json();
 }
 
-module.exports = { olistGet, ErroOlist };
+/**
+ * POST/PUT no Olist já autenticado. Usado para lançar os pedidos do site.
+ * Exige que o aplicativo do Olist tenha as permissões de Pedidos e Contatos
+ * (além de Produtos); sem elas o Olist responde 403.
+ */
+async function olistEnviar(metodo, caminho, corpo) {
+  const token = await obterToken();
+  const res = await fetch(API_BASE + caminho, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo || {}),
+  });
+
+  if (res.status === 204) return null;
+  const texto = await res.text();
+  let json = null;
+  try { json = JSON.parse(texto); } catch (e) { json = null; }
+
+  if (res.status === 403) {
+    throw new ErroOlist(403, 'O aplicativo do Olist não tem permissão para isso. Libere Pedidos e Contatos no aplicativo e autorize de novo (npm run get-token).');
+  }
+  if (res.status === 429) {
+    throw new ErroOlist(429, 'Limite de chamadas do Olist atingido. Tente de novo em alguns segundos.');
+  }
+  if (!res.ok) {
+    /* o Olist explica campo a campo o que recusou */
+    const det = json && Array.isArray(json.detalhes)
+      ? json.detalhes.map((d) => `${d.campo}: ${d.mensagem}`).join('; ')
+      : '';
+    throw new ErroOlist(res.status, `Olist recusou (${res.status}): ${(json && json.mensagem) || ''}${det ? ' - ' + det : ''}`);
+  }
+  return json;
+}
+
+module.exports = { olistGet, olistEnviar, ErroOlist };

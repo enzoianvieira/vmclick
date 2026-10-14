@@ -273,6 +273,13 @@ async function calcular(ambiente, token, corpo) {
   if (res.status === 401) {
     throw new ErroFrete(502, 'Token do Melhor Envio recusado (vencido, revogado ou de outro ambiente).');
   }
+  /* 403: o token autentica, mas não tem a permissão de cotar. Acontece com
+     token gerado sem marcar shipping-calculate. */
+  if (res.status === 403) {
+    console.error('[frete] 403 do Melhor Envio:', (await res.text()).slice(0, 300));
+    throw new ErroFrete(502,
+      'Token sem permissão de cotar frete. Gere um novo token marcando a permissão shipping-calculate.');
+  }
   if (!res.ok) {
     throw new ErroFrete(502, `Melhor Envio respondeu ${res.status} na cotação`);
   }

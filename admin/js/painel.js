@@ -893,7 +893,52 @@
     $('#integ-asaas').innerHTML = cartaoIntegracao('asaas');
     $('#integ-melhorenvio').innerHTML = cartaoIntegracao('melhorenvio');
     $('#integ-email').innerHTML = cartaoEmail();
+    if (!$('#integ-olist').innerHTML) $('#integ-olist').innerHTML = cartaoOlist();
   }
+
+  /* ---- Olist: o token que o site usa e as permissões dele ---- */
+
+  function cartaoOlist() {
+    return '<div class="integ__cab"><div><h3>Olist <span class="selo selo--teal">ERP</span></h3>' +
+        '<p>Catálogo e pedidos. O pedido pago vai para o Olist; para isso o aplicativo precisa das permissões de Produtos, Contatos e Pedidos.</p></div>' +
+        '<button class="bt bt--linha" type="button" data-olist="verificar">Verificar permissões</button></div>' +
+      '<div class="integ-amb">' +
+        '<div class="campo"><label for="olist-token">Refresh token novo</label>' +
+          '<div class="busca-linha"><input id="olist-token" type="password" autocomplete="off" spellcheck="false" placeholder="eyJhbGciOi…">' +
+          '<button class="bt bt--principal" type="button" data-olist="token">Salvar e conectar</button></div>' +
+          '<span class="dica">Depois de liberar permissões no aplicativo do Olist: rode <code>npm run get-token</code>, entre e autorize. ' +
+          'Copie o <code>TINY_REFRESH_TOKEN</code> do .env e cole aqui em até 1 dia. O token só vale uma vez.</span></div>' +
+      '</div>' +
+      '<p class="integ-msg" data-msg aria-live="polite"></p>';
+  }
+
+  $('#integ-olist').addEventListener('click', function (e) {
+    var bt = e.target.closest('[data-olist]');
+    if (!bt || bt.disabled) return;
+    var acao = bt.dataset.olist;
+    var valor = {};
+    if (acao === 'token') {
+      valor.token = $('#olist-token').value.trim();
+      if (!valor.token) { mensagem('olist', 'Cole o refresh token.', true); return; }
+    }
+    var original = bt.textContent;
+    bt.disabled = true;
+    bt.textContent = 'Aguarde…';
+    mensagem('olist', '');
+    API.integracao('olist', acao, null, valor)
+      .then(function (r) {
+        bt.disabled = false;
+        bt.textContent = original;
+        if (acao === 'token') $('#olist-token').value = '';
+        mensagem('olist', r.mensagem, /sem permissão/.test(r.mensagem));
+        aviso(r.mensagem);
+      })
+      .catch(function (err) {
+        bt.disabled = false;
+        bt.textContent = original;
+        mensagem('olist', err.message, true);
+      });
+  });
 
   /* ---- e-mail (Resend): uma chave, um remetente, sem ambientes ---- */
 

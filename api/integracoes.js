@@ -20,6 +20,7 @@ const config = require('./_config.js');
 const asaas = require('./_asaas.js');
 const { testarConexao, ErroFrete } = require('./_frete.js');
 const email = require('./_email.js');
+const olist = require('./_olist.js');
 
 const ROTULO = { sandbox: 'teste', producao: 'produção' };
 
@@ -236,6 +237,35 @@ async function acaoEmail(acao, valor) {
   throw new ErroPainel(400, 'Ação desconhecida');
 }
 
+/* Olist: conferir permissões e trocar o token depois de reautorizar. */
+async function acaoOlist(acao, valor) {
+  const descrever = (p) => {
+    const falta = ['produtos', 'contatos', 'pedidos'].filter((k) => !p[k]);
+    return falta.length
+      ? `Conectado, mas sem permissão de ${falta.join(', ')}. Libere no aplicativo do Olist, autorize de novo e cole o token novo aqui.`
+      : 'Conectado ao Olist com permissão de Produtos, Contatos e Pedidos.';
+  };
+
+  if (acao === 'verificar') {
+    try { return descrever(await olist.verificarPermissoes()); } catch (e) { throw new ErroPainel(400, e.message); }
+  }
+
+  if (acao === 'token') {
+    const token = String((valor && valor.token) || '').trim();
+    if (token.length < 100 || /\s/.test(token)) {
+      throw new ErroPainel(400, 'Cole o TINY_REFRESH_TOKEN inteiro, do .env, logo depois de rodar npm run get-token.');
+    }
+    try {
+      await olist.conectarComRefresh(token);
+      return 'Token novo salvo. ' + descrever(await olist.verificarPermissoes());
+    } catch (e) {
+      throw new ErroPainel(400, e.message);
+    }
+  }
+
+  throw new ErroPainel(400, 'Ação desconhecida');
+}
+
 /* -------------------------------------------------------------- handler --- */
 
 module.exports = protegido(async (req, res) => {
@@ -255,6 +285,11 @@ module.exports = protegido(async (req, res) => {
     const { integracao, acao, ambiente, valor } = lerCorpo(req);
 
     let mensagem;
+    if (integracao === 'olist') {
+      mensagem = await acaoOlist(acao, valor);
+      console.log(`[integracoes] ${req.sessao.u}: olist ${acao}`);
+      return res.status(200).json({ ok: true, mensagem, situacao: await config.resumo() });
+    }
     if (integracao === 'email') {
       mensagem = await acaoEmail(acao, valor);
       console.log(`[integracoes] ${req.sessao.u}: email ${acao}`);

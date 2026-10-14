@@ -25,12 +25,12 @@ const TOKEN_URL = 'https://accounts.tiny.com.br/realms/tiny/protocol/openid-conn
 /* cache do token vivo nesta instância */
 let tokenCache = { valor: null, expiraEm: 0 };
 
-async function obterToken() {
+async function obterToken(refreshInformado) {
   const agora = Date.now();
-  if (tokenCache.valor && agora < tokenCache.expiraEm - 60_000) return tokenCache.valor;
+  if (!refreshInformado && tokenCache.valor && agora < tokenCache.expiraEm - 60_000) return tokenCache.valor;
 
   const { TINY_CLIENT_ID, TINY_CLIENT_SECRET } = process.env;
-  const refreshAtual = await credenciais.lerRefreshToken();
+  const refreshAtual = refreshInformado || await credenciais.lerRefreshToken();
   if (!TINY_CLIENT_ID || !TINY_CLIENT_SECRET || !refreshAtual) {
     throw new ErroOlist(500, 'Credenciais do Olist não configuradas no servidor');
   }
@@ -49,6 +49,9 @@ async function obterToken() {
   });
 
   if (!res.ok) {
+    if (refreshInformado) {
+      throw new ErroOlist(400, 'O Olist recusou este token. Ele vale cerca de 1 dia e só pode ser usado uma vez: rode npm run get-token de novo e cole o TINY_REFRESH_TOKEN novo.');
+    }
     /* refresh_token do Olist expira. Quando isso acontece, alguém precisa
        autorizar de novo pelo navegador e atualizar a variável de ambiente. */
     const dica = credenciais.armazenamentoDisponivel()
@@ -71,6 +74,15 @@ async function obterToken() {
   return tokenCache.valor;
 }
 
+/* 403 = o token não tem a permissão. Depois que alguém reautoriza com as
+   permissões novas, o token em memória desta instância ainda é o velho:
+   esquecê-lo faz a próxima chamada pegar o novo no KV. */
+const MSG_403 = 'O aplicativo do Olist não tem permissão para isso. Libere Pedidos e Contatos no aplicativo, autorize de novo e cole o token novo em painel > Integrações > Olist.';
+
+function esquecerToken() {
+  tokenCache = { valor: null, expiraEm: 0 };
+}
+
 class ErroOlist extends Error {
   constructor(status, mensagem) {
     super(mensagem);
@@ -88,6 +100,10 @@ async function olistGet(caminho) {
 
   if (res.status === 429) {
     throw new ErroOlist(429, 'Limite de chamadas do Olist atingido. Tente de novo em alguns segundos.');
+  }
+  if (res.status === 403) {
+    esquecerToken();
+    throw new ErroOlist(403, MSG_403);
   }
   if (!res.ok) {
     let msg = '';
@@ -120,7 +136,8 @@ async function olistEnviar(metodo, caminho, corpo) {
   try { json = JSON.parse(texto); } catch (e) { json = null; }
 
   if (res.status === 403) {
-    throw new ErroOlist(403, 'O aplicativo do Olist não tem permissão para isso. Libere Pedidos e Contatos no aplicativo e autorize de novo (npm run get-token).');
+    esquecerToken();
+    throw new ErroOlist(403, MSG_403);
   }
   if (res.status === 429) {
     throw new ErroOlist(429, 'Limite de chamadas do Olist atingido. Tente de novo em alguns segundos.');
@@ -135,4 +152,26 @@ async function olistEnviar(metodo, caminho, corpo) {
   return json;
 }
 
-module.exports = { olistGet, olistEnviar, ErroOlist };
+/**
+ * Para o painel: troca o refresh token colado (de uma autorização nova, com
+ * as permissões novas) por um par novo, guarda o refresh rotacionado no KV e
+ * passa a usar o access token na hora. O token colado é consumido: o Olist
+ * rotaciona a cada uso.
+ */
+async function conectarComRefresh(refresh) {
+  esquecerToken();
+  await obterToken(String(refresh || '').trim());
+}
+
+/** Quais leituras o token atual consegue fazer (sem gravar nada no Olist). */
+async function verificarPermissoes() {
+  const r = {};
+  for (const [nome, caminho] of [['produtos', '/produtos?limit=1'], ['contatos', '/contatos?limit=1'], ['pedidos', '/pedidos?limit=1']]) {
+    try { await olistGet(caminho); r[nome] = true; } catch (e) {
+      if (e.status === 403) r[nome] = false; else throw e;
+    }
+  }
+  return r;
+}
+
+module.exports = { olistGet, olistEnviar, conectarComRefresh, verificarPermissoes, esquecerToken, ErroOlist };

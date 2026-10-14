@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seu pedido | VM Click</title>
+<meta name="description" content="Acompanhe o pagamento do seu pedido na VM Click.">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css">
+<script>document.documentElement.classList.add('js-anim');</script>
+<style>
+  .pedido-pix { display: grid; gap: var(--sp-5); justify-items: center; text-align: center; }
+  .pedido-pix img { width: 220px; height: 220px; image-rendering: pixelated; border: 1px solid var(--border); border-radius: var(--r-md); background: #fff; }
+  .pedido-codigo { width: 100%; font-family: var(--font-mono, monospace); font-size: var(--fs-xs); word-break: break-all;
+    padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-subtle); resize: none; }
+  .pedido-status { display: flex; align-items: center; gap: var(--sp-2); justify-content: center; font-size: var(--fs-sm); color: var(--text-muted); }
+  .pedido-status .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--warning, #C77700); animation: pedidoPulso 1.4s ease-in-out infinite; }
+  @keyframes pedidoPulso { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .pedido-status .ponto { animation: none; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <span aria-current="page">Pedido</span>
+      </nav>
+      <h1 id="titulo-pedido">Seu pedido</h1>
+      <p id="sub-pedido">Guarde o link desta página: é por aqui que você acompanha o pagamento.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container" id="pedido"></div>
+  </section>
+
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/cart.js"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  var raiz = document.getElementById('pedido');
+  var id = VM.param('id');
+
+  /* Pergunta ao servidor a cada poucos segundos enquanto o pagamento não
+     cai. Pix costuma confirmar em segundos; depois de 30 minutos para, e um
+     botão deixa conferir de novo. */
+  var INTERVALO_MS = 5000;
+  var LIMITE_MS = 30 * 60 * 1000;
+  var inicio = Date.now();
+  var timer = null;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* Só links do próprio Asaas viram botão: o endereço vem do servidor, mas
+     não custa garantir que nenhum href estranho entre na página. */
+  function urlAsaas(u) {
+    return /^https:\/\/([a-z0-9-]+\.)*asaas\.com\//i.test(String(u || '')) ? u : null;
+  }
+
+  function semPedido(msg) {
+    raiz.innerHTML =
+      '<div class="empty-state">' + VM.icon('alerta') +
+      '<h3>' + esc(msg) + '</h3>' +
+      '<p class="muted" style="margin-top:8px">Confira o link ou fale com a loja.</p>' +
+      '<div class="row" style="justify-content:center;margin-top:24px">' +
+        '<a class="btn btn--primary" href="produtos.html">Ver produtos</a>' +
+        '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar com a loja</a>' +
+      '</div></div>';
+  }
+
+  function resumo(p) {
+    return '<aside class="summary">' +
+      '<h3>Resumo</h3>' +
+      p.itens.map(function (i) {
+        return '<div class="summary__row"><span>' + i.qtd + '× ' + esc(i.nome) + '</span><b>' + VM.money(i.sub) + '</b></div>';
+      }).join('') +
+      '<hr class="divider">' +
+      '<div class="summary__row"><span>Subtotal</span><b>' + VM.money(p.subtotal) + '</b></div>' +
+      '<div class="summary__row"><span>Frete<br><small class="subtle">' + esc(p.entrega.servico) + '</small></span><b>' +
+        (p.freteACombinar ? 'A combinar' : (p.frete === 0 ? 'Grátis' : VM.money(p.frete))) + '</b></div>' +
+      (p.desconto > 0
+        ? '<div class="summary__row" style="color:var(--success)"><span>Desconto Pix</span><b>− ' + VM.money(p.desconto) + '</b></div>'
+        : '') +
+      '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(p.total) + '</span></div>' +
+      (p.forma === 'cartao' && p.parcelas > 1
+        ? '<p class="frete-nota">' + p.parcelas + '× de ' + VM.money(p.total / p.parcelas) + ' no cartão</p>'
+        : '') +
+    '</aside>';
+  }
+
+  function aguardando() {
+    return '<p class="pedido-status" aria-live="polite"><span class="ponto"></span>Aguardando a confirmação do pagamento…</p>';
+  }
+
+  function copiar(alvoId, botao) {
+    var campo = document.getElementById(alvoId);
+    if (!campo) return;
+    var texto = campo.value;
+    var feito = function () { botao.textContent = 'Copiado!'; setTimeout(function () { botao.textContent = 'Copiar código'; }, 2000); };
+    if (navigator.clipboard) navigator.clipboard.writeText(texto).then(feito, function () { campo.select(); });
+    else { campo.select(); document.execCommand('copy'); feito(); }
+  }
+
+  function painelPix(p) {
+    if (!p.pix) {
+      return '<div class="panel stack-6"><h3>Pague com Pix</h3>' +
+        (urlAsaas(p.faturaUrl)
+          ? '<p>O QR code está na página de pagamento.</p><a class="btn btn--primary" target="_blank" rel="noopener" href="' + esc(urlAsaas(p.faturaUrl)) + '">Abrir página de pagamento</a>'
+          : '<p>Não deu para gerar o QR code agora. Atualize a página em instantes ou fale com a loja.</p>') +
+        aguardando() + '</div>';
+    }
+    return '<div class="panel stack-6 pedido-pix">' +
+      '<h3>Pague com Pix</h3>' +
+      '<p class="muted" style="font-size:14px">Abra o app do seu banco, escolha pagar com Pix e leia o QR code ou cole o código.</p>' +
+      '<img alt="QR code Pix do pedido" src="data:image/png;base64,' + esc(p.pix.imagem) + '">' +
+      '<textarea id="pix-codigo" class="pedido-codigo" rows="4" readonly aria-label="Código Pix copia e cola">' + esc(p.pix.copiaECola) + '</textarea>' +
+      '<button class="btn btn--primary" type="button" data-copiar="pix-codigo">Copiar código</button>' +
+      aguardando() +
+    '</div>';
+  }
+
+  function painelBoleto(p) {
+    var url = p.boleto && urlAsaas(p.boleto.url);
+    return '<div class="panel stack-6">' +
+      '<h3>Pague o boleto</h3>' +
+      '<p class="muted" style="font-size:14px">O pagamento pode levar até 2 dias úteis para ser compensado. Assim que cair, esta página atualiza sozinha.</p>' +
+      (p.boleto && p.boleto.linha
+        ? '<textarea id="boleto-linha" class="pedido-codigo" rows="2" readonly aria-label="Linha digitável do boleto">' + esc(p.boleto.linha) + '</textarea>' +
+          '<button class="btn btn--secondary" type="button" data-copiar="boleto-linha">Copiar código</button>'
+        : '') +
+      (url ? '<a class="btn btn--primary" target="_blank" rel="noopener" href="' + esc(url) + '">Abrir boleto (PDF)</a>' : '') +
+      aguardando() +
+    '</div>';
+  }
+
+  function painelCartao(p) {
+    var url = urlAsaas(p.faturaUrl);
+    return '<div class="panel stack-6">' +
+      '<h3>Pague com cartão</h3>' +
+      '<p class="muted" style="font-size:14px">O cartão é digitado na página segura do Asaas. Se você já pagou, a confirmação aparece aqui em instantes.</p>' +
+      (url ? '<a class="btn btn--primary btn--lg" href="' + esc(url) + '">Ir para o pagamento</a>' : '') +
+      aguardando() +
+    '</div>';
+  }
+
+  function caixaFinal(icone, selo, titulo, texto) {
+    return '<div class="done-box">' +
+      '<div class="done-box__ico">' + VM.icon(icone) + '</div>' +
+      selo +
+      '<h2 style="margin:16px 0 12px">' + titulo + '</h2>' +
+      '<p class="muted">' + texto + '</p>' +
+      '<div class="row" style="justify-content:center;margin-top:28px">' +
+        '<a class="btn btn--primary" href="produtos.html">Voltar ao catálogo</a>' +
+        '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar com a loja</a>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function painelPago(p) {
+    var entrega = p.entrega.tipo === 'retirada'
+      ? 'Avisaremos quando estiver pronto para retirar na loja (R. Amadeu do Amaral, 1602 - Portão).'
+      : (p.freteACombinar
+          ? 'A equipe entra em contato para combinar valor e prazo da entrega.'
+          : 'Agora separamos e embalamos. O prazo de entrega conta a partir da postagem.');
+    return caixaFinal('check', '<span class="badge badge--ok">Pagamento confirmado</span>',
+      'Recebemos seu pagamento',
+      'Pedido <b class="mono">' + esc(p.numero) + '</b> · ' + VM.money(p.total) + '. ' + entrega);
+  }
+
+  function painelEncerrado(p) {
+    var textos = {
+      vencido: ['Prazo de pagamento vencido', 'O prazo deste pagamento passou. Se ainda quiser os produtos, faça um novo pedido ou fale com a loja.'],
+      cancelado: ['Cobrança cancelada', 'Este pedido foi cancelado e nada será cobrado.'],
+      falhou: ['Não foi possível gerar o pagamento', 'Nada foi cobrado. Tente de novo ou fale com a loja.'],
+      estornado: ['Pagamento estornado', 'O valor deste pedido foi devolvido.'],
+      contestado: ['Pagamento em contestação', 'O pagamento está em análise junto à operadora do cartão. A loja entra em contato.'],
+    };
+    var t = textos[p.status] || ['Situação: ' + esc(p.status), ''];
+    return caixaFinal('alerta', '<span class="badge badge--warn">' + esc(p.numero) + '</span>', t[0], t[1]);
+  }
+
+  function pintar(p) {
+    document.getElementById('titulo-pedido').textContent = 'Pedido ' + p.numero;
+
+    if (p.status === 'pago') {
+      document.getElementById('sub-pedido').textContent = 'Obrigado pela compra!';
+      raiz.innerHTML = painelPago(p);
+      return;
+    }
+    if (p.status !== 'aguardando') {
+      raiz.innerHTML = painelEncerrado(p);
+      return;
+    }
+
+    var painel = p.forma === 'pix' ? painelPix(p) : (p.forma === 'boleto' ? painelBoleto(p) : painelCartao(p));
+    raiz.innerHTML = '<div class="checkout-layout"><div>' + painel + '</div>' + resumo(p) + '</div>';
+
+    raiz.querySelectorAll('[data-copiar]').forEach(function (b) {
+      b.addEventListener('click', function () { copiar(b.getAttribute('data-copiar'), b); });
+    });
+  }
+
+  function consultar() {
+    return fetch('/api/pedido?id=' + encodeURIComponent(id)).then(function (r) {
+      if (r.status === 404) throw new Error('404');
+      if (!r.ok) throw new Error('falha');
+      return r.json();
+    });
+  }
+
+  /* Repinta só quando o status muda: redesenhar a cada consulta tiraria a
+     seleção de quem está copiando o código. */
+  var ultimo = null;
+
+  function ciclo() {
+    consultar().then(function (p) {
+      if (!ultimo || ultimo.status !== p.status) pintar(p);
+      ultimo = p;
+      if (p.status === 'aguardando') {
+        if (Date.now() - inicio < LIMITE_MS) timer = setTimeout(ciclo, INTERVALO_MS);
+        else pausado();
+      }
+    }).catch(function (e) {
+      if (e.message === '404') { semPedido('Pedido não encontrado'); return; }
+      /* falha passageira: tenta de novo mais devagar */
+      timer = setTimeout(ciclo, INTERVALO_MS * 3);
+    });
+  }
+
+  function pausado() {
+    var aviso = raiz.querySelector('.pedido-status');
+    if (!aviso) return;
+    aviso.innerHTML = 'Ainda não recebemos a confirmação. <button class="btn btn--ghost btn--sm" type="button" id="conferir">Conferir agora</button>';
+    document.getElementById('conferir').addEventListener('click', function () {
+      inicio = Date.now();
+      ultimo = null;
+      ciclo();
+    });
+  }
+
+  if (!id) { semPedido('Nenhum pedido informado'); return; }
+  raiz.innerHTML = '<p class="frete-nota">Carregando pedido…</p>';
+  ciclo();
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

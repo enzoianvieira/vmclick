@@ -199,4 +199,5 @@ module.exports = {
   lerToken, gravarToken,
   lerJson, gravarJson,
   armazenamentoDisponivel,
+  credenciaisKV,
 };

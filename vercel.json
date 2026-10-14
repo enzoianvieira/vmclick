@@ -3,6 +3,9 @@
   "functions": {
     "api/frete/cotar.js": {
       "includeFiles": "data/produtos.js"
+    },
+    "api/pedido.js": {
+      "includeFiles": "data/produtos.js"
     }
   },
   "headers": [

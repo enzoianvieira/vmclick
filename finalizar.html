@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Finalizar compra | VM Click</title>
-<meta name="description" content="Fechamento de pedido - ambiente de demonstração.">
+<meta name="description" content="Finalize sua compra na VM Click com Pix, boleto ou cartão.">
+<meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
 <link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
@@ -30,7 +31,7 @@
         <span aria-current="page">Finalizar</span>
       </nav>
       <h1>Finalizar compra</h1>
-      <p>Fluxo completo de checkout em três passos. Nesta versão nada é cobrado e nenhum pedido é enviado.</p>
+      <p>Três passos: seus dados, a entrega e o pagamento. O pagamento é processado pelo Asaas - dados de cartão não passam pelo site.</p>
     </div>
   </section>
 
@@ -54,9 +55,41 @@
 document.addEventListener('vm:ready', function () {
   var raiz = document.getElementById('checkout');
   var passo = 1;
-  var pagamento = 'pix';
+  var pagamento = null;
+  var parcelas = 1;
+  var enviando = false;
+
+  /* Os painéis são redesenhados a cada passo; o que a pessoa digitou fica
+     aqui, senão voltar um passo apagaria o formulário. Só em memória: CPF e
+     endereço não ficam gravados no navegador. */
+  var dados = {};
+
+  /* Regras de pagamento vêm do servidor (formas ativas, desconto do Pix,
+     parcelas). Enquanto não chegam, vale o padrão da vitrine. */
+  var cfg = { formas: ['pix', 'boleto', 'cartao'], descontoPix: 5, maxParcelas: 6, parcelaMinima: 25, boletoDias: 3, ativo: true };
 
   var PASSOS = ['Identificação', 'Entrega', 'Pagamento'];
+
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function digitos(v) { return String(v || '').replace(/\D/g, ''); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function val(id) { return esc(dados[id] || ''); }
+
+  /* Mesma conta do servidor (api/pedido.js), com o mesmo arredondamento:
+     o total mostrado é conferido lá antes de cobrar. */
+  function valores() {
+    var bruto = r2(VMCart.subtotal() + VMCart.frete());
+    var desconto = pagamento === 'pix' ? r2(bruto * cfg.descontoPix / 100) : 0;
+    return { bruto: bruto, desconto: desconto, total: r2(bruto - desconto) };
+  }
+
+  function maxParcelas() {
+    return Math.max(1, Math.min(cfg.maxParcelas, Math.floor(valores().total / cfg.parcelaMinima)));
+  }
 
   function barraPassos() {
     return '<div class="steps">' + PASSOS.map(function (t, i) {
@@ -72,26 +105,31 @@ document.addEventListener('vm:ready', function () {
     var linhas = VMCart.linhas();
     var frete = VMCart.frete();
     var escolhida = VMFrete.selecionada();
+    var v = valores();
+    var pixPreview = pagamento !== 'pix' && cfg.formas.indexOf('pix') !== -1;
     return '' +
     '<aside class="summary">' +
       '<h3>Resumo</h3>' +
       linhas.map(function (l) {
-        return '<div class="summary__row"><span>' + l.qtd + '× ' + l.p.nome + '</span><b>' + VM.money(l.sub) + '</b></div>';
+        return '<div class="summary__row"><span>' + l.qtd + '× ' + esc(l.p.nome) + '</span><b>' + VM.money(l.sub) + '</b></div>';
       }).join('') +
       '<hr class="divider">' +
       '<div class="summary__row"><span>Subtotal</span><b>' + VM.money(VMCart.subtotal()) + '</b></div>' +
       '<div class="summary__row"><span>Frete' +
-        (escolhida ? '<br><small class="subtle">' + escolhida.servico + '</small>' : '') +
+        (escolhida ? '<br><small class="subtle">' + esc(escolhida.servico) + '</small>' : '') +
         '</span><b>' +
           (escolhida && escolhida.tipo === 'combinar'
             ? 'A combinar'
             : (frete === 0 ? 'Grátis' : VM.money(frete))) + '</b></div>' +
       (escolhida ? '' : '<p class="frete-nota">Frete estimado. Calcule pelo CEP no passo de entrega.</p>') +
-      '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(VMCart.total()) + '</span></div>' +
-      (pagamento === 'pix'
-        ? '<p style="font-size:13px;color:var(--success);font-weight:600">' + VM.money(VMCart.total() * 0.95) + ' com 5% de desconto no Pix</p>'
+      (v.desconto > 0
+        ? '<div class="summary__row" style="color:var(--success)"><span>Desconto Pix (' + cfg.descontoPix + '%)</span><b>− ' + VM.money(v.desconto) + '</b></div>'
         : '') +
-      '<p class="mono subtle" style="text-align:center">Demonstração - sem cobrança.</p>' +
+      '<div class="summary__total"><span>Total</span><span class="v">' + VM.money(v.total) + '</span></div>' +
+      (pixPreview && cfg.descontoPix > 0
+        ? '<p style="font-size:13px;color:var(--success);font-weight:600">' +
+            VM.money(r2(v.bruto - r2(v.bruto * cfg.descontoPix / 100))) + ' com ' + cfg.descontoPix + '% de desconto no Pix</p>'
+        : '') +
     '</aside>';
   }
 
@@ -100,15 +138,15 @@ document.addEventListener('vm:ready', function () {
       '<h3>Seus dados</h3>' +
       '<div class="field-grid field-grid--2">' +
         '<div class="field"><label for="nome">Nome completo <span class="req">*</span></label>' +
-          '<input id="nome" required placeholder="Nome e sobrenome"><span class="err">Informe seu nome.</span></div>' +
+          '<input id="nome" autocomplete="name" placeholder="Nome e sobrenome" value="' + val('nome') + '"><span class="err">Informe nome e sobrenome.</span></div>' +
         '<div class="field"><label for="doc">CPF ou CNPJ <span class="req">*</span></label>' +
-          '<input id="doc" inputmode="numeric" placeholder="000.000.000-00"><span class="err">Informe um documento.</span></div>' +
+          '<input id="doc" inputmode="numeric" placeholder="000.000.000-00" value="' + val('doc') + '"><span class="err">Informe um CPF ou CNPJ válido.</span></div>' +
         '<div class="field"><label for="email">E-mail <span class="req">*</span></label>' +
-          '<input id="email" type="email" placeholder="voce@email.com"><span class="err">Informe um e-mail válido.</span></div>' +
+          '<input id="email" type="email" autocomplete="email" placeholder="voce@email.com" value="' + val('email') + '"><span class="err">Informe um e-mail válido.</span></div>' +
         '<div class="field"><label for="tel">Telefone <span class="req">*</span></label>' +
-          '<input id="tel" inputmode="tel" placeholder="(41) 90000-0000"><span class="err">Informe um telefone.</span></div>' +
+          '<input id="tel" inputmode="tel" autocomplete="tel" placeholder="(41) 90000-0000" value="' + val('tel') + '"><span class="err">Informe DDD + número.</span></div>' +
       '</div>' +
-      '<label class="filter-opt" style="padding:0"><input type="checkbox" id="pessoa-juridica">Comprar como pessoa jurídica (emitir NF-e para CNPJ)</label>' +
+      '<label class="filter-opt" style="padding:0"><input type="checkbox" id="pj"' + (dados.pj ? ' checked' : '') + '>Comprar como pessoa jurídica (emitir NF-e para CNPJ)</label>' +
     '</div>';
   }
 
@@ -118,26 +156,47 @@ document.addEventListener('vm:ready', function () {
       '<p class="muted" style="font-size:14px;margin-top:-8px">' +
         'Informe o CEP para ver as formas de entrega e o prazo.</p>' +
       '<div class="field-grid field-grid--2">' +
-        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" maxlength="9" placeholder="80000-000" value="' + (VMFrete.cep() || '') + '"><span class="err">Informe o CEP.</span></div>' +
+        '<div class="field"><label for="cep">CEP <span class="req">*</span></label><input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="80000-000" value="' + esc(dados.cep || VMFrete.cep() || '') + '"><span class="err">Informe o CEP.</span></div>' +
         '<div class="field" style="align-self:end"><button class="btn btn--secondary" type="button" id="calcular-frete">Calcular frete</button></div>' +
       '</div>' +
       '<div id="frete-opcoes" class="stack"></div>' +
-      '<div class="field-grid field-grid--2">' +
-        '<div class="field"><label for="rua">Endereço</label><input id="rua" placeholder="Rua, avenida…"></div>' +
-        '<div class="field"><label for="numero">Número</label><input id="numero" placeholder="1602"></div>' +
-        '<div class="field"><label for="compl">Complemento</label><input id="compl" placeholder="Apto, bloco, referência"></div>' +
-        '<div class="field"><label for="bairro">Bairro</label><input id="bairro" placeholder="Portão"></div>' +
-        '<div class="field"><label for="cidade">Cidade</label><input id="cidade" value="Curitiba"></div>' +
+      '<div class="field-grid field-grid--2" id="endereco">' +
+        '<div class="field"><label for="rua">Endereço <span class="req" data-req-end>*</span></label><input id="rua" autocomplete="address-line1" placeholder="Rua, avenida…" value="' + val('rua') + '"><span class="err">Informe o endereço.</span></div>' +
+        '<div class="field"><label for="numero">Número <span class="req" data-req-end>*</span></label><input id="numero" placeholder="1602" value="' + val('numero') + '"><span class="err">Informe o número.</span></div>' +
+        '<div class="field"><label for="compl">Complemento</label><input id="compl" autocomplete="address-line2" placeholder="Apto, bloco, referência" value="' + val('compl') + '"></div>' +
+        '<div class="field"><label for="bairro">Bairro <span class="req" data-req-end>*</span></label><input id="bairro" placeholder="Portão" value="' + val('bairro') + '"><span class="err">Informe o bairro.</span></div>' +
+        '<div class="field"><label for="cidade">Cidade <span class="req" data-req-end>*</span></label><input id="cidade" autocomplete="address-level2" placeholder="Curitiba" value="' + val('cidade') + '"><span class="err">Informe a cidade.</span></div>' +
+        '<div class="field"><label for="uf">UF <span class="req" data-req-end>*</span></label><input id="uf" autocomplete="address-level1" maxlength="2" placeholder="PR" style="text-transform:uppercase" value="' + val('uf') + '"><span class="err">Informe a UF.</span></div>' +
       '</div>' +
     '</div>';
   }
 
   function painelPagamento() {
+    var v = valores();
     var opcoes = [
-      { v: 'pix',     i: 'pix',    t: 'Pix', d: '5% de desconto · aprovação imediata' },
-      { v: 'cartao',  i: 'cartao', t: 'Cartão de crédito', d: 'Até 6× sem juros' },
-      { v: 'boleto',  i: 'boleto', t: 'Boleto bancário', d: 'Compensação em até 2 dias úteis' }
-    ];
+      { v: 'pix',    i: 'pix',    t: 'Pix', d: (cfg.descontoPix > 0 ? cfg.descontoPix + '% de desconto · ' : '') + 'aprovação imediata' },
+      { v: 'cartao', i: 'cartao', t: 'Cartão de crédito', d: (maxParcelas() > 1 ? 'Até ' + maxParcelas() + '× sem juros · ' : '') + 'digitado no ambiente seguro do Asaas' },
+      { v: 'boleto', i: 'boleto', t: 'Boleto bancário', d: 'Vence em ' + cfg.boletoDias + ' dias · compensação em até 2 dias úteis' }
+    ].filter(function (o) { return cfg.formas.indexOf(o.v) !== -1; });
+
+    if (!cfg.ativo || !opcoes.length) {
+      return '<div class="panel stack-6"><h3>Pagamento</h3>' +
+        '<div class="frete-aviso"><b>O pagamento online ainda não está disponível.</b>' +
+          '<p>Fale com a loja pelo WhatsApp para fechar este pedido.</p>' +
+          '<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="' + VM.EMPRESA.whatsapp + '">Falar com a loja</a></div>' +
+      '</div>';
+    }
+
+    var seletorParcelas = '';
+    if (pagamento === 'cartao' && maxParcelas() > 1) {
+      var ops = '';
+      for (var n = 1; n <= maxParcelas(); n++) {
+        ops += '<option value="' + n + '"' + (n === parcelas ? ' selected' : '') + '>' +
+          n + '× de ' + VM.money(v.total / n) + (n > 1 ? ' sem juros' : ' à vista') + '</option>';
+      }
+      seletorParcelas = '<div class="field"><label for="parcelas">Parcelas</label><select id="parcelas">' + ops + '</select></div>';
+    }
+
     return '<div class="panel stack-6">' +
       '<h3>Pagamento</h3>' +
       '<div class="stack">' + opcoes.map(function (o) {
@@ -146,22 +205,45 @@ document.addEventListener('vm:ready', function () {
           VM.icon(o.i) +
           '<span><span class="pay-opt__t">' + o.t + '</span><span class="pay-opt__d">' + o.d + '</span></span></label>';
       }).join('') + '</div>' +
-      '<div class="note-demo panel" style="background:var(--warning-bg);border-color:#F0DEBE">' +
-        '<p style="font-size:14px;color:#6A3D06">' +
-        '<b>Demonstração.</b> Nenhum dado de pagamento é solicitado ou processado nesta versão. ' +
-        'Na loja real, este passo é executado pelo checkout do WooCommerce com o gateway contratado.</p>' +
-      '</div>' +
+      seletorParcelas +
+      (pagamento === 'cartao'
+        ? '<p class="frete-nota">Ao continuar você vai para a página de pagamento do Asaas, onde digita o cartão. ' +
+          'O site da VM Click não recebe nem guarda dados de cartão.</p>'
+        : '') +
+      '<div id="erro-pagamento"></div>' +
     '</div>';
   }
 
+  function textoBotao() {
+    if (passo < 3) return 'Continuar';
+    if (!cfg.ativo) return 'Pagamento indisponível';
+    var total = VM.money(valores().total);
+    if (pagamento === 'pix') return 'Gerar Pix de ' + total;
+    if (pagamento === 'boleto') return 'Gerar boleto de ' + total;
+    if (pagamento === 'cartao') return 'Pagar ' + total + ' com cartão';
+    return 'Escolha a forma de pagamento';
+  }
+
   function botoes() {
+    var bloqueado = passo === 3 && (!cfg.ativo || !pagamento);
     return '<div class="row" style="justify-content:space-between;margin-top:24px">' +
       (passo > 1
         ? '<button class="btn btn--ghost" type="button" id="voltar">← Voltar</button>'
         : '<a class="btn btn--ghost" href="carrinho.html">← Voltar ao carrinho</a>') +
-      '<button class="btn btn--primary btn--lg" type="button" id="avancar">' +
-        (passo === 3 ? 'Concluir pedido simulado' : 'Continuar') + '</button>' +
+      '<button class="btn btn--primary btn--lg" type="button" id="avancar"' + (bloqueado ? ' disabled' : '') + '>' +
+        textoBotao() + '</button>' +
     '</div>';
+  }
+
+  /* Guarda o que está na tela antes de redesenhar. */
+  function coletar() {
+    ['nome', 'doc', 'email', 'tel', 'cep', 'rua', 'numero', 'compl', 'bairro', 'cidade', 'uf'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) dados[id] = el.value.trim();
+    });
+    var pj = document.getElementById('pj');
+    if (pj) dados.pj = pj.checked;
+    if (dados.uf) dados.uf = dados.uf.toUpperCase();
   }
 
   function render() {
@@ -169,10 +251,14 @@ document.addEventListener('vm:ready', function () {
       raiz.innerHTML =
         '<div class="empty-state">' + VM.icon('carrinho') +
         '<h3>Não há itens para finalizar</h3>' +
-        '<p class="muted" style="margin-top:8px">Adicione produtos ao carrinho para testar o fluxo de compra.</p>' +
+        '<p class="muted" style="margin-top:8px">Adicione produtos ao carrinho para fazer o pedido.</p>' +
         '<a class="btn btn--primary" style="margin-top:24px" href="produtos.html">Ver produtos</a></div>';
       return;
     }
+
+    if (pagamento && cfg.formas.indexOf(pagamento) === -1) pagamento = null;
+    if (!pagamento && cfg.formas.length) pagamento = cfg.formas[0];
+    parcelas = Math.min(parcelas, maxParcelas());
 
     var painel = passo === 1 ? painelIdentificacao() : (passo === 2 ? painelEntrega() : painelPagamento());
 
@@ -182,10 +268,13 @@ document.addEventListener('vm:ready', function () {
     var avancar = document.getElementById('avancar');
     var voltar = document.getElementById('voltar');
 
-    if (voltar) voltar.addEventListener('click', function () { passo--; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    if (voltar) voltar.addEventListener('click', function () {
+      coletar(); passo--; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
     avancar.addEventListener('click', function () {
       if (!validar()) return;
+      coletar();
       if (passo < 3) { passo++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
       else concluir();
     });
@@ -194,30 +283,53 @@ document.addEventListener('vm:ready', function () {
       r.addEventListener('change', function () { pagamento = this.value; render(); });
     });
 
-    document.querySelectorAll('.pay-opt input[type="radio"]').forEach(function (r) {
-      r.addEventListener('change', function () {
-        var nome = this.name;
-        document.querySelectorAll('input[name="' + nome + '"]').forEach(function (x) {
-          x.closest('.pay-opt').classList.toggle('is-sel', x.checked);
-        });
-      });
+    var selParcelas = document.getElementById('parcelas');
+    if (selParcelas) selParcelas.addEventListener('change', function () {
+      parcelas = parseInt(this.value, 10) || 1;
+      avancar.textContent = textoBotao();
     });
 
     var cep = document.getElementById('cep');
     if (cep) {
       cep.addEventListener('input', function () {
         this.value = VMFrete.formatarCep(this.value);
+        /* CEP completo já dispara a cotação: ninguém gosta de digitar e ainda
+           ter que clicar num botão. O botão fica para quem quer refazer. */
+        if (digitos(this.value).length === 8) { calcularFrete(); preencherEndereco(this.value); }
       });
-      /* CEP completo já dispara a cotação: ninguém gosta de digitar e ainda
-         ter que clicar num botão. O botão fica para quem quer refazer. */
-      cep.addEventListener('input', function () {
-        if (this.value.replace(/\D/g, '').length === 8) calcularFrete();
-      });
-      if (cep.value.replace(/\D/g, '').length === 8) calcularFrete();
+      if (digitos(cep.value).length === 8) calcularFrete();
     }
 
     var btnFrete = document.getElementById('calcular-frete');
     if (btnFrete) btnFrete.addEventListener('click', calcularFrete);
+
+    marcarEnderecoObrigatorio();
+  }
+
+  /* Retirada na loja dispensa endereço; o resto precisa dele para entregar. */
+  function exigeEndereco() {
+    var e = VMFrete.selecionada();
+    return !(e && e.tipo === 'retirada');
+  }
+
+  function marcarEnderecoObrigatorio() {
+    var exige = exigeEndereco();
+    document.querySelectorAll('[data-req-end]').forEach(function (el) { el.hidden = !exige; });
+  }
+
+  /* Completa rua, bairro, cidade e UF pelo CEP (ViaCEP), sem sobrescrever o
+     que a pessoa já digitou. Falhar aqui não atrapalha: os campos seguem
+     editáveis. */
+  function preencherEndereco(cep) {
+    var d = digitos(cep);
+    fetch('https://viacep.com.br/ws/' + d + '/json/').then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || j.erro) return;
+      var mapa = { rua: j.logradouro, bairro: j.bairro, cidade: j.localidade, uf: j.uf };
+      Object.keys(mapa).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && !el.value.trim() && mapa[id]) el.value = mapa[id];
+      });
+    }).catch(function () { /* segue manual */ });
   }
 
   /* Cota o CEP digitado e redesenha as opções e o resumo. */
@@ -228,13 +340,14 @@ document.addEventListener('vm:ready', function () {
 
     alvo.innerHTML = '<p class="frete-nota">Calculando frete…</p>';
 
-    VMFrete.cotar(campo.value).then(function (dados) {
-      VMFrete.montarSeletor(alvo, dados, { aoEscolher: atualizarResumo });
-      atualizarResumo();
+    VMFrete.cotar(campo.value).then(function (dadosFrete) {
+      VMFrete.montarSeletor(alvo, dadosFrete, { aoEscolher: aoMudarFrete });
+      aoMudarFrete();
     }).catch(function (e) {
       /* Cotação fora do ar não pode virar beco sem saída: sem uma alternativa
          selecionável o pedido trava aqui e a venda se perde. A loja confirma
-         o valor depois, como já fazia antes de existir cotação automática. */
+         o valor depois, como já fazia antes de existir cotação automática.
+         O servidor só aceita esta opção enquanto a cotação estiver fora. */
       var combinar = {
         id: 'combinar', tipo: 'combinar', transportadora: 'VM Click',
         servico: 'Combinar entrega com a loja', preco: 0, prazo: null,
@@ -243,7 +356,7 @@ document.addEventListener('vm:ready', function () {
 
       alvo.innerHTML =
         '<div class="frete-aviso"><b>Não deu para calcular o frete agora.</b>' +
-          '<p>' + (e && e.message ? e.message : 'Tente de novo em instantes.') + '</p></div>' +
+          '<p>' + esc(e && e.message ? e.message : 'Tente de novo em instantes.') + '</p></div>' +
         '<div class="stack" style="margin-top:12px">' +
           '<label class="pay-opt frete-opt is-sel">' +
             '<input type="radio" name="frete-opcao" value="combinar" checked>' +
@@ -255,8 +368,13 @@ document.addEventListener('vm:ready', function () {
         '</div>';
 
       VMFrete.escolher(combinar);
-      atualizarResumo();
+      aoMudarFrete();
     });
+  }
+
+  function aoMudarFrete() {
+    atualizarResumo();
+    marcarEnderecoObrigatorio();
   }
 
   /* Só o resumo é redesenhado: recriar o painel inteiro faria o campo de CEP
@@ -269,19 +387,33 @@ document.addEventListener('vm:ready', function () {
     antigo.replaceWith(novo.firstChild);
   }
 
+  function invalido(id) {
+    var el = document.getElementById(id);
+    if (!el) return false;
+    var v = el.value.trim();
+    var d = digitos(v);
+    if (!v) return true;
+    if (id === 'nome') return v.split(/\s+/).length < 2;
+    if (id === 'doc') return d.length !== 11 && d.length !== 14;
+    if (id === 'email') return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    if (id === 'tel') return d.length < 10 || d.length > 11;
+    if (id === 'cep') return d.length !== 8;
+    if (id === 'uf') return !/^[A-Za-z]{2}$/.test(v);
+    return false;
+  }
+
   function validar() {
-    var obrigatorios = passo === 1 ? ['nome', 'doc', 'email', 'tel'] : (passo === 2 ? ['cep'] : []);
+    var obrigatorios = [];
+    if (passo === 1) obrigatorios = ['nome', 'doc', 'email', 'tel'];
+    if (passo === 2) obrigatorios = ['cep'].concat(exigeEndereco() ? ['rua', 'numero', 'bairro', 'cidade', 'uf'] : []);
     var ok = true;
 
-    obrigatorios.forEach(function (id) {
+    ['nome', 'doc', 'email', 'tel', 'cep', 'rua', 'numero', 'bairro', 'cidade', 'uf'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
-      var campo = el.closest('.field');
-      var vazio = !el.value.trim();
-      var emailRuim = id === 'email' && el.value.indexOf('@') === -1;
-      var invalido = vazio || emailRuim;
-      campo.classList.toggle('is-invalid', invalido);
-      if (invalido && ok) { el.focus(); ok = false; }
+      var ruim = obrigatorios.indexOf(id) !== -1 && invalido(id);
+      el.closest('.field').classList.toggle('is-invalid', ruim);
+      if (ruim && ok) { el.focus(); ok = false; }
     });
 
     if (!ok) { VM.toast('Confira os campos destacados.', 'warn'); return false; }
@@ -291,36 +423,94 @@ document.addEventListener('vm:ready', function () {
       return false;
     }
 
+    if (passo === 3 && !pagamento) {
+      VM.toast('Escolha a forma de pagamento.', 'warn');
+      return false;
+    }
+
     return true;
   }
 
+  function mostrarErro(msg) {
+    var alvo = document.getElementById('erro-pagamento');
+    if (!alvo) { VM.toast(msg, 'warn'); return; }
+    alvo.innerHTML = '<div class="frete-aviso" role="alert"><b>Não foi possível concluir.</b><p>' + esc(msg) + '</p></div>';
+  }
+
+  /* Cria o pedido no servidor, que recalcula tudo e gera a cobrança. */
   function concluir() {
-    var numero = 'VM-' + String(Math.floor(Math.random() * 90000) + 10000);
-    var total = VM.money(VMCart.total());
+    if (enviando) return;
+    enviando = true;
 
-    raiz.innerHTML =
-      '<div class="done-box">' +
-        '<div class="done-box__ico">' + VM.icon('check') + '</div>' +
-        '<span class="badge badge--warn">Pedido simulado</span>' +
-        '<h2 style="margin:16px 0 12px">Pedido registrado na demonstração</h2>' +
-        '<p class="muted">Número do pedido <b class="mono">' + numero + '</b> · total de <b>' + total + '</b>.</p>' +
-        '<p class="muted" style="margin-top:16px">' +
-          'Este é o ponto em que a loja real dispara o pagamento, envia o e-mail de confirmação e ' +
-          'lança o pedido no <b>Olist Tiny</b> para separação e emissão da nota fiscal. ' +
-          'Nesta versão de teste, nada disso acontece - nenhum valor foi cobrado.' +
-        '</p>' +
-        '<div class="row" style="justify-content:center;margin-top:28px">' +
-          '<a class="btn btn--primary" href="produtos.html">Voltar ao catálogo</a>' +
-          '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar com a loja</a>' +
-        '</div>' +
-      '</div>';
+    var botao = document.getElementById('avancar');
+    botao.disabled = true;
+    botao.textContent = 'Gerando pagamento…';
 
-    VMFrete.limpar();
-    VMCart.limpar();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    var frete = VMFrete.selecionada();
+    var corpo = {
+      cliente: { nome: dados.nome, doc: dados.doc, email: dados.email, tel: dados.tel, pj: dados.pj },
+      entrega: {
+        cep: dados.cep, rua: dados.rua, numero: dados.numero, compl: dados.compl,
+        bairro: dados.bairro, cidade: dados.cidade, uf: dados.uf,
+      },
+      itens: VMCart.linhas().map(function (l) { return { sku: l.p.sku, qtd: l.qtd }; }),
+      frete: frete && frete.id,
+      forma: pagamento,
+      parcelas: pagamento === 'cartao' ? parcelas : 1,
+      totalVisto: valores().total,
+    };
+
+    fetch('/api/pedido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    }).then(function (r) {
+      return r.text().then(function (texto) {
+        var j = {};
+        try { j = JSON.parse(texto); } catch (e) { j = {}; }
+        if (!r.ok) {
+          var msg = j.erro || 'Serviço de pagamento indisponível no momento.';
+          if (j.total != null) msg += ' Novo total: ' + VM.money(j.total) + '.';
+          throw new Error(msg);
+        }
+        return j;
+      });
+    }).then(function (pedido) {
+      try { localStorage.setItem('vm_ultimo_pedido', JSON.stringify({ id: pedido.id, numero: pedido.numero })); }
+      catch (e) { /* segue */ }
+
+      VMFrete.limpar();
+      VMCart.limpar();
+
+      /* Cartão vai direto para a fatura do Asaas; a página do pedido também
+         oferece o link, para quem fechar a aba antes de pagar. */
+      window.location.href = pedido.forma === 'cartao' && pedido.faturaUrl
+        ? pedido.faturaUrl
+        : 'pedido.html?id=' + encodeURIComponent(pedido.id);
+    }).catch(function (e) {
+      enviando = false;
+      botao.disabled = false;
+      botao.textContent = textoBotao();
+      mostrarErro(e.message);
+    });
   }
 
   render();
+
+  /* Redesenhar o painel inteiro no meio da digitação apagaria o campo em foco,
+     então fora do passo 3 só o resumo é atualizado. */
+  function aplicarCfg() { if (passo === 3) render(); else atualizarResumo(); }
+
+  fetch('/api/pedido').then(function (r) {
+    if (!r.ok) throw new Error('sem api');
+    return r.json();
+  }).then(function (j) {
+    if (j && j.formas) { cfg = j; aplicarCfg(); }
+  }).catch(function () {
+    /* Sem servidor de funções (dev:estatico) não há como cobrar. */
+    cfg.ativo = false;
+    aplicarCfg();
+  });
 });
 </script>
 <script src="assets/js/animations.js"></script>

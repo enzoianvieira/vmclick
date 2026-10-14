@@ -9,7 +9,9 @@
  * O peso e as medidas também são resolvidos aqui, a partir do catálogo, e não
  * aceitos do navegador: quem manda o pacote manda o preço do frete.
  *
- * Variáveis de ambiente (painel da Vercel, nunca no repositório):
+ * Ambiente e token podem vir do painel administrativo (aba Integrações):
+ * um token pessoal do Melhor Envio, por ambiente. Sem ele, vale o fluxo
+ * OAuth com as variáveis de ambiente abaixo (painel da Vercel):
  *   MELHORENVIO_AMBIENTE        sandbox | producao   (padrão: sandbox)
  *   MELHORENVIO_CLIENT_ID
  *   MELHORENVIO_CLIENT_SECRET
@@ -25,15 +27,14 @@ const path = require('path');
 const vm = require('vm');
 
 const credenciais = require('./_credenciais.js');
+const config = require('./_config.js');
 
 const CHAVE_TOKEN = 'vmclick:melhorenvio:refresh_token';
 
-const SANDBOX = 'https://sandbox.melhorenvio.com.br';
-const PRODUCAO = 'https://melhorenvio.com.br';
-
-function base() {
-  return process.env.MELHORENVIO_AMBIENTE === 'producao' ? PRODUCAO : SANDBOX;
-}
+const BASES = {
+  sandbox: 'https://sandbox.melhorenvio.com.br',
+  producao: 'https://melhorenvio.com.br',
+};
 
 class ErroFrete extends Error {
   constructor(status, mensagem) {
@@ -175,7 +176,24 @@ let tokenCache = { valor: null, expiraEm: 0 };
    uma requisição longa esbarra na virada. */
 const FOLGA_MS = 5 * 60 * 1000;
 
-async function obterToken() {
+/**
+ * Ambiente e token em uso. Token pessoal cadastrado no painel tem
+ * prioridade; sem ele, o access_token do fluxo OAuth - que só vale no
+ * ambiente em que foi autorizado (MELHORENVIO_AMBIENTE).
+ */
+async function conexao() {
+  const c = await config.melhorEnvio();
+  if (c.token) return { ambiente: c.ambiente, token: c.token };
+
+  const ambienteOauth = process.env.MELHORENVIO_AMBIENTE === 'producao' ? 'producao' : 'sandbox';
+  if (ambienteOauth !== c.ambiente) {
+    throw new ErroFrete(503,
+      `Melhor Envio em modo ${c.ambiente === 'producao' ? 'produção' : 'teste'} sem token cadastrado. Cadastre o token no painel.`);
+  }
+  return { ambiente: c.ambiente, token: await obterTokenOauth(c.ambiente) };
+}
+
+async function obterTokenOauth(ambiente) {
   if (tokenCache.valor && Date.now() < tokenCache.expiraEm - FOLGA_MS) return tokenCache.valor;
 
   const { MELHORENVIO_CLIENT_ID, MELHORENVIO_CLIENT_SECRET } = process.env;
@@ -196,7 +214,7 @@ async function obterToken() {
     throw new ErroFrete(503, 'Cotação de frete não configurada no servidor');
   }
 
-  const res = await fetch(`${base()}/oauth/token`, {
+  const res = await fetch(`${BASES[ambiente]}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
@@ -239,6 +257,44 @@ async function obterToken() {
    Cotação
    ========================================================================== */
 
+async function calcular(ambiente, token, corpo) {
+  const res = await fetch(`${BASES[ambiente]}/api/v2/me/shipment/calculate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      /* o Melhor Envio exige User-Agent identificando a aplicação */
+      'User-Agent': process.env.MELHORENVIO_USER_AGENT || 'VM Click (contato@vmclick.com.br)',
+    },
+    body: JSON.stringify(corpo),
+  });
+
+  if (res.status === 401) {
+    throw new ErroFrete(502, 'Token do Melhor Envio recusado (vencido, revogado ou de outro ambiente).');
+  }
+  if (!res.ok) {
+    throw new ErroFrete(502, `Melhor Envio respondeu ${res.status} na cotação`);
+  }
+  return res.json();
+}
+
+/**
+ * Para o botão "Testar" do painel: cota uma caixa padrão até a Praça da Sé
+ * (SP) com o token daquele ambiente. Valida o que importa - o token tem
+ * permissão de cotar - sem precisar de produto nenhum.
+ */
+async function testarConexao(ambiente, token) {
+  const origem = apenasDigitos(process.env.FRETE_CEP_ORIGEM) || '81320450';
+  const lista = await calcular(ambiente, token, {
+    from: { postal_code: origem },
+    to: { postal_code: '01001000' },
+    package: { height: PADRAO.altura, width: PADRAO.largura, length: PADRAO.comprimento, weight: PADRAO.peso },
+  });
+  const servicos = (Array.isArray(lista) ? lista : []).filter((s) => s && !s.error);
+  return { servicos: servicos.map((s) => `${(s.company && s.company.name) || ''} ${s.name}`.trim()) };
+}
+
 function apenasDigitos(cep) {
   return String(cep || '').replace(/\D/g, '');
 }
@@ -261,7 +317,7 @@ async function cotar(cepDestino, itens) {
     return { opcoes: [], excedeLimite: true, estimado, local: atendeEntregaLocal(destino) };
   }
 
-  const token = await obterToken();
+  const { ambiente, token } = await conexao();
   const corpo = {
     from: { postal_code: origem },
     to: { postal_code: destino },
@@ -275,23 +331,7 @@ async function cotar(cepDestino, itens) {
   };
   if (process.env.MELHORENVIO_SERVICOS) corpo.services = process.env.MELHORENVIO_SERVICOS;
 
-  const res = await fetch(`${base()}/api/v2/me/shipment/calculate`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      /* o Melhor Envio exige User-Agent identificando a aplicação */
-      'User-Agent': process.env.MELHORENVIO_USER_AGENT || 'VM Click (contato@vmclick.com.br)',
-    },
-    body: JSON.stringify(corpo),
-  });
-
-  if (!res.ok) {
-    throw new ErroFrete(502, `Melhor Envio respondeu ${res.status} na cotação`);
-  }
-
-  const lista = await res.json();
+  const lista = await calcular(ambiente, token, corpo);
 
   /* A API devolve também os serviços que não atendem, marcados com "error".
      Esses saem da lista: opção que não dá para escolher só confunde.
@@ -311,4 +351,72 @@ async function cotar(cepDestino, itens) {
   return { opcoes, excedeLimite: false, estimado, local: atendeEntregaLocal(destino) };
 }
 
-module.exports = { cotar, atendeEntregaLocal, ErroFrete };
+/* ==========================================================================
+   Modalidades de entrega
+   ========================================================================== */
+
+/* Regras da entrega da própria loja. Espelham o que o checkout já prometia:
+   "1 a 3 dias úteis · grátis acima de R$ 299". */
+const FRETE_GRATIS_ACIMA = Number(process.env.FRETE_GRATIS_ACIMA || 299);
+const FRETE_LOCAL = Number(process.env.FRETE_LOCAL || 24.9);
+
+/**
+ * Lista completa do que o cliente pode escolher para aquele CEP: retirada,
+ * entrega própria quando o CEP é de Curitiba ou região, e as transportadoras.
+ *
+ * Usada pela cotação na tela e de novo na criação do pedido, para o preço do
+ * frete cobrado sair daqui e não do navegador.
+ */
+async function opcoesDeEntrega(cep, itens, subtotal) {
+  const r = await cotar(cep, itens);
+
+  const opcoes = [
+    {
+      id: 'retirada',
+      tipo: 'retirada',
+      transportadora: 'VM Click',
+      servico: 'Retirar na loja - Portão',
+      preco: 0,
+      prazo: null,
+      detalhe: 'R. Amadeu do Amaral, 1602 · pronto em 2 horas',
+    },
+  ];
+
+  if (r.local) {
+    const gratis = Number(subtotal) >= FRETE_GRATIS_ACIMA;
+    opcoes.push({
+      id: 'entrega-local',
+      tipo: 'local',
+      transportadora: 'VM Click',
+      servico: 'Entrega VM Click - Curitiba e região',
+      preco: gratis ? 0 : FRETE_LOCAL,
+      prazo: 3,
+      detalhe: gratis ? 'Frete grátis nesta compra' : `Grátis acima de R$ ${FRETE_GRATIS_ACIMA}`,
+    });
+  }
+
+  for (const o of r.opcoes) {
+    opcoes.push({
+      id: `me-${o.id}`,
+      tipo: 'transportadora',
+      transportadora: o.transportadora,
+      servico: o.servico,
+      preco: o.preco,
+      prazo: o.prazo,
+      detalhe: o.prazo ? `${o.prazo} dia(s) útil(eis) após a postagem` : '',
+    });
+  }
+
+  return {
+    opcoes,
+    excedeLimite: r.excedeLimite,
+    /* Nenhuma transportadora atendeu e o CEP não é da área de entrega própria:
+       sobra só a retirada na loja, em Curitiba, que não serve para quem está
+       em outro estado. A tela precisa saber disso para oferecer o orçamento
+       pelo WhatsApp em vez de fingir que há uma opção. */
+    semTransportadora: !r.opcoes.length && !r.local,
+    pesoEstimado: r.estimado,
+  };
+}
+
+module.exports = { cotar, opcoesDeEntrega, atendeEntregaLocal, catalogo, testarConexao, ErroFrete };

@@ -34,6 +34,23 @@ saldo da conta, não apenas cotar.
 
 ## Configuração
 
+### Pelo painel (recomendado)
+
+Aba **Integrações** do painel administrativo: colar um **token pessoal** do
+Melhor Envio em "Teste (sandbox)" ou "Produção" e clicar **Salvar e testar** —
+o painel cota uma caixa até São Paulo antes de guardar. O token é gerado em
+Integrações > Permissões de acesso > Gerar novo token, com a permissão
+`shipping-calculate`. Depois, escolher o modo.
+
+Token pessoal não rotaciona, então dispensa o fluxo OAuth abaixo e o cuidado
+com o refresh token. Fica cifrado no KV, como as chaves do Asaas (ver
+`08-pagamento-asaas.md`). Quando o token vencer, gere outro e cole no painel.
+
+### Pelo fluxo OAuth (alternativa)
+
+Vale quando o painel não tem token para o ambiente em uso.
+
+
 1. Criar conta e um aplicativo no Melhor Envio. Comece pelo sandbox
    (`https://sandbox.melhorenvio.com.br`), que simula sem cobrar e atende
    Correios e Jadlog.
@@ -112,15 +129,8 @@ Se a cotação falhar (API fora do ar, token vencido), o checkout oferece
 
 ## O que ainda falta para vender de verdade
 
-Isto cobre **só o frete**. O passo de pagamento continua sendo demonstração.
-Para fechar venda ainda faltam:
+Pagamento (Asaas), criação do pedido no servidor revalidando preço, frete e
+estoque, e webhook de confirmação: ver `08-pagamento-asaas.md`. Ainda faltam:
 
-1. Gateway de pagamento (Mercado Pago, Pagar.me ou Stripe), com checkout
-   hospedado ou tokenização — campo de cartão na própria página joga a loja
-   dentro do escopo pesado de PCI-DSS.
-2. Criação do pedido no servidor, **revalidando preço e estoque**. Hoje o preço
-   vem do `data/produtos.js` no navegador; um checkout que confie nisso pode ser
-   fraudado pelo DevTools.
-3. Webhook de confirmação → lança o pedido no Olist Tiny → compra a etiqueta no
-   Melhor Envio.
-4. Página de trocas e devoluções (exigência do CDC).
+1. Pedido pago → lança no Olist Tiny → compra a etiqueta no Melhor Envio.
+2. Página de trocas e devoluções (exigência do CDC).

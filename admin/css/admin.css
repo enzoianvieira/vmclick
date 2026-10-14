@@ -220,3 +220,33 @@ table.dados .nome { color: var(--text); font-weight: var(--fw-medium); }
 .item__acoes { display: flex; gap: 6px; align-items: center; }
 .item.inativo { opacity: .55; }
 .item img.miniatura { width: 72px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+
+/* ----------------------------------------------------------- INTEGRAÇÕES -- */
+.integ__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-4); }
+.integ__cab h3 { margin: 0 0 4px; font-size: 16px; color: var(--text); display: flex; align-items: center; gap: var(--sp-2); }
+.integ__cab p { margin: 0; font-size: 13px; color: var(--text-subtle); max-width: 60ch; }
+
+/* Seletor de modo: dois botões colados, o ativo preenchido. Produção em
+   vermelho de propósito - é o modo que cobra de verdade. */
+.modo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+.modo button {
+  border: 0; background: var(--n-0); padding: 8px 14px; font: inherit; font-size: 13px;
+  font-weight: var(--fw-semibold); color: var(--text-muted); cursor: pointer;
+}
+.modo button + button { border-left: 1px solid var(--border); }
+.modo button[aria-pressed="true"][data-ambiente="sandbox"] { background: var(--warning-bg); color: var(--warning); }
+.modo button[aria-pressed="true"][data-ambiente="producao"] { background: var(--danger); color: #fff; }
+.modo button:disabled { cursor: wait; }
+
+.integ-amb {
+  display: grid; gap: var(--sp-3); padding: var(--sp-4) 0;
+  border-top: 1px solid var(--n-100);
+}
+.integ-amb__topo { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: 13.5px; }
+.integ-amb__topo b { color: var(--text); }
+.integ-amb__topo .final { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.integ-amb .busca-linha input { font-family: var(--font-mono); font-size: 13px; }
+.integ-url { font-family: var(--font-mono); font-size: 12px; word-break: break-all; background: var(--n-50); padding: 6px 10px; border-radius: var(--r-sm, 6px); border: 1px solid var(--border); }
+.integ-msg { font-size: 13px; margin: 0; }
+.integ-msg--ok { color: var(--success); }
+.integ-msg--erro { color: var(--danger); }

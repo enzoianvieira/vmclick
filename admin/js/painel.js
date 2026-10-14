@@ -103,6 +103,9 @@
     b.addEventListener('click', function () {
       $$('.abas button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
       $$('.tela').forEach(function (t) { t.hidden = t.id !== 'tela-' + b.dataset.tela; });
+      /* busca a situação toda vez que a aba abre: outra pessoa pode ter
+         mudado o modo em outro computador */
+      if (b.dataset.tela === 'integracoes') carregarIntegracoes();
     });
   });
 
@@ -484,7 +487,197 @@
   });
 
   /* ====================================================================== */
-  /* 7. PUBLICAR                                                            */
+  /* 7. TELA: INTEGRAÇÕES                                                   */
+  /* ====================================================================== */
+
+  /* Chaves do Asaas e do Melhor Envio, uma por ambiente, e o modo em uso.
+     O servidor testa cada chave antes de guardar e nunca devolve a chave:
+     aqui só aparece o final dela. Nada disso passa pelo rascunho nem pelo
+     "Publicar" - vale na hora. */
+
+  var integ = null;
+  var AMBIENTES = ['sandbox', 'producao'];
+  var ROTULO_AMB = { sandbox: 'Teste (sandbox)', producao: 'Produção' };
+
+  var INTEG = {
+    asaas: {
+      dados: function () { return integ.asaas; },
+      nome: 'Asaas',
+      descricao: 'Pagamento: Pix, boleto e cartão. Em teste, nenhuma compra é cobrada.',
+      rotulo: 'Chave da API',
+      segredos: function (d) { return d.chaves; },
+      placeholder: { sandbox: '$aact_hmlg_…', producao: '$aact_prod_…' },
+      onde: {
+        sandbox: 'No sandbox.asaas.com: Integrações > Chaves de API > Gerar chave.',
+        producao: 'No asaas.com: Integrações > Chaves de API > Gerar chave.',
+      },
+    },
+    melhorenvio: {
+      dados: function () { return integ.melhorEnvio; },
+      nome: 'Melhor Envio',
+      descricao: 'Frete: cotação de Jadlog, Correios e demais transportadoras.',
+      rotulo: 'Token',
+      segredos: function (d) { return d.tokens; },
+      placeholder: { sandbox: 'eyJ0eXAiOiJKV1Qi…', producao: 'eyJ0eXAiOiJKV1Qi…' },
+      onde: {
+        sandbox: 'No sandbox.melhorenvio.com.br: Integrações > Permissões de acesso > Gerar novo token, com a permissão shipping-calculate.',
+        producao: 'No melhorenvio.com.br: Integrações > Permissões de acesso > Gerar novo token, com a permissão shipping-calculate.',
+      },
+    },
+  };
+
+  function data(iso) {
+    return iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
+  }
+
+  function situacaoSegredo(id, d, amb) {
+    var s = INTEG[id].segredos(d)[amb];
+    if (s.configurada) {
+      return '<span class="selo selo--ok">cadastrada</span><span class="final">' + esc(s.final) + '</span>' +
+        (s.em ? '<span class="final">em ' + data(s.em) + '</span>' : '');
+    }
+    if (id === 'asaas' && d.origemChave === 'ambiente' && d.ambiente === amb) {
+      return '<span class="selo selo--neutro">usando a variável do servidor</span>';
+    }
+    if (id === 'melhorenvio' && d.oauth && d.ambienteOauth === amb) {
+      return '<span class="selo selo--neutro">usando a conexão OAuth do servidor</span>';
+    }
+    return '<span class="selo selo--aviso">não cadastrada</span>';
+  }
+
+  function linhaWebhook(d, amb) {
+    var w = d.webhook[amb];
+    var cadastrada = d.chaves[amb].configurada || (d.origemChave === 'ambiente' && d.ambiente === amb);
+    return '<div class="integ-amb__topo">' +
+      '<span>Webhook (aviso de pagamento):</span>' +
+      (w.configurado
+        ? '<span class="selo selo--ok">configurado</span>' + (w.em ? '<span class="final">em ' + data(w.em) + '</span>' : '')
+        : '<span class="selo selo--aviso">não configurado</span>') +
+      '<button class="bt bt--mini bt--linha" type="button" data-integ="asaas" data-acao="webhook" data-amb="' + amb + '"' +
+        (!cadastrada || integ.webhookLocal ? ' disabled' : '') + '>' +
+        (w.configurado ? 'Reconfigurar' : 'Configurar automaticamente') + '</button>' +
+    '</div>';
+  }
+
+  function cartaoIntegracao(id) {
+    var cfg = INTEG[id];
+    var d = cfg.dados();
+    var prod = d.ambiente === 'producao';
+
+    var ambientes = AMBIENTES.map(function (amb) {
+      var s = cfg.segredos(d)[amb];
+      return '<div class="integ-amb">' +
+        '<div class="integ-amb__topo"><b>' + ROTULO_AMB[amb] + '</b>' +
+          (d.ambiente === amb ? '<span class="selo selo--teal">em uso</span>' : '') +
+          situacaoSegredo(id, d, amb) + '</div>' +
+        '<div class="campo">' +
+          '<label for="integ-' + id + '-' + amb + '">' + cfg.rotulo + (s.configurada ? ' (substituir)' : '') + '</label>' +
+          '<div class="busca-linha">' +
+            '<input id="integ-' + id + '-' + amb + '" type="password" autocomplete="off" spellcheck="false" placeholder="' + esc(cfg.placeholder[amb]) + '">' +
+            '<button class="bt bt--principal" type="button" data-integ="' + id + '" data-acao="chave" data-amb="' + amb + '">Salvar e testar</button>' +
+            (s.configurada
+              ? '<button class="bt bt--linha" type="button" data-integ="' + id + '" data-acao="testar" data-amb="' + amb + '">Testar</button>' +
+                '<button class="bt bt--perigo" type="button" data-integ="' + id + '" data-acao="remover" data-amb="' + amb + '">Remover</button>'
+              : '') +
+          '</div>' +
+          '<span class="dica">' + esc(cfg.onde[amb]) + '</span>' +
+        '</div>' +
+        (id === 'asaas' ? linhaWebhook(d, amb) : '') +
+      '</div>';
+    }).join('');
+
+    return '<div class="integ__cab">' +
+        '<div><h3>' + cfg.nome + ' <span class="selo ' + (prod ? 'selo--alerta' : 'selo--aviso') + '">' +
+          (prod ? 'produção' : 'teste') + '</span></h3><p>' + cfg.descricao + '</p></div>' +
+        '<div class="modo" role="group" aria-label="Modo do ' + cfg.nome + '">' +
+          AMBIENTES.map(function (amb) {
+            return '<button type="button" data-integ="' + id + '" data-acao="ambiente" data-amb="' + amb + '" data-ambiente="' + amb + '"' +
+              ' aria-pressed="' + (d.ambiente === amb) + '">' + ROTULO_AMB[amb] + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      (id === 'asaas'
+        ? '<div class="campo" style="margin-bottom:var(--sp-3)"><label>Endereço do webhook</label>' +
+            '<div class="integ-url">' + esc(integ.webhookUrl) + '</div>' +
+            '<span class="dica">' + (integ.webhookLocal
+              ? 'Você está no painel local: o Asaas não alcança este computador. Configure o webhook pelo painel do site publicado.'
+              : '"Configurar automaticamente" cadastra este endereço na sua conta do Asaas, com um token secreto gerado aqui.') +
+            '</span></div>'
+        : '') +
+      ambientes +
+      '<p class="integ-msg" data-msg aria-live="polite"></p>';
+  }
+
+  function renderIntegracoes() {
+    $('#integ-sem-kv').hidden = integ.armazenamento;
+    $('#integ-asaas').innerHTML = cartaoIntegracao('asaas');
+    $('#integ-melhorenvio').innerHTML = cartaoIntegracao('melhorenvio');
+  }
+
+  function carregarIntegracoes() {
+    API.integracoes()
+      .then(function (r) { integ = r; renderIntegracoes(); })
+      .catch(function (err) {
+        $('#integ-asaas').innerHTML = '<div class="aviso aviso--erro">' + esc(err.message) + '</div>';
+      });
+  }
+
+  function mensagem(id, texto, erro) {
+    var alvo = $('#integ-' + id + ' [data-msg]');
+    if (!alvo) return;
+    alvo.className = 'integ-msg ' + (erro ? 'integ-msg--erro' : 'integ-msg--ok');
+    alvo.textContent = texto;
+  }
+
+  var CONFIRMAR_PRODUCAO = {
+    asaas: 'Ativar o Asaas em PRODUÇÃO?\n\nA partir de agora as compras no site cobram de verdade.',
+    melhorenvio: 'Ativar o Melhor Envio em PRODUÇÃO?\n\nA cotação passa a usar a conta real.',
+  };
+
+  $('#tela-integracoes').addEventListener('click', function (e) {
+    var bt = e.target.closest('[data-acao]');
+    if (!bt || bt.disabled || !integ) return;
+
+    var id = bt.dataset.integ;
+    var acao = bt.dataset.acao;
+    var amb = bt.dataset.amb;
+    var valor;
+
+    if (acao === 'ambiente') {
+      if (INTEG[id].dados().ambiente === amb) return;
+      if (amb === 'producao' && !confirm(CONFIRMAR_PRODUCAO[id])) return;
+    }
+    if (acao === 'chave') {
+      valor = $('#integ-' + id + '-' + amb).value.trim();
+      if (!valor) { mensagem(id, 'Cole a ' + INTEG[id].rotulo.toLowerCase() + ' antes de salvar.', true); return; }
+    }
+    if (acao === 'remover' && !confirm('Remover a ' + INTEG[id].rotulo.toLowerCase() + ' de ' + ROTULO_AMB[amb] + '?')) return;
+
+    var original = bt.textContent;
+    bt.disabled = true;
+    bt.textContent = acao === 'chave' || acao === 'testar' ? 'Testando…' : 'Aguarde…';
+    mensagem(id, '');
+
+    API.integracao(id, acao, amb, valor)
+      .then(function (r) {
+        var url = integ.webhookUrl;
+        var local = integ.webhookLocal;
+        integ = r.situacao;
+        integ.webhookUrl = url;
+        integ.webhookLocal = local;
+        renderIntegracoes();
+        mensagem(id, r.mensagem, false);
+        aviso(r.mensagem);
+      })
+      .catch(function (err) {
+        bt.disabled = false;
+        bt.textContent = original;
+        mensagem(id, err.message, true);
+      });
+  });
+
+  /* ====================================================================== */
+  /* 8. PUBLICAR                                                            */
   /* ====================================================================== */
 
   /* O operador clica e o servidor faz o resto: monta os arquivos, grava no
@@ -560,7 +753,7 @@
   });
 
   /* ====================================================================== */
-  /* 8. BOOT                                                                */
+  /* 9. BOOT                                                                */
   /* ====================================================================== */
 
   $('#sair').addEventListener('click', function () {

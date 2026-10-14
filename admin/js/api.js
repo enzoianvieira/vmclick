@@ -76,5 +76,17 @@ window.API = (function () {
     detalheProduto(id) {
       return pedir('/api/produtos/detalhe?id=' + encodeURIComponent(id));
     },
+
+    /* ---------------------------------------------------- integrações --- */
+    integracoes() {
+      return pedir('/api/integracoes');
+    },
+
+    integracao(integracao, acao, ambiente, valor) {
+      return pedir('/api/integracoes', {
+        method: 'POST',
+        body: JSON.stringify({ integracao: integracao, acao: acao, ambiente: ambiente, valor: valor }),
+      });
+    },
   };
 })();

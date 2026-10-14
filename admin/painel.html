@@ -26,6 +26,7 @@
   <button role="tab" aria-selected="true"  data-tela="produtos">Produtos</button>
   <button role="tab" aria-selected="false" data-tela="banners">Banners</button>
   <button role="tab" aria-selected="false" data-tela="blog">Blog</button>
+  <button role="tab" aria-selected="false" data-tela="integracoes">Integrações</button>
 </nav>
 
 <!-- ====================================================== PRODUTOS -->
@@ -101,6 +102,24 @@
   </div>
 
   <div class="itens" id="lista-blog"></div>
+</main>
+
+<!-- ====================================================== INTEGRAÇÕES -->
+<main class="tela" id="tela-integracoes" hidden>
+  <div class="tela-cab">
+    <div>
+      <h2>Integrações</h2>
+      <p>Chaves de acesso do pagamento e do frete, e o modo de cada um: teste (nada é cobrado) ou produção (valendo).
+        As chaves ficam guardadas cifradas no servidor e não voltam para esta tela - você vê só o final delas.</p>
+    </div>
+  </div>
+
+  <div class="aviso aviso--alerta" id="integ-sem-kv" hidden>
+    <b>O servidor não tem onde guardar as chaves.</b> Falta configurar o armazenamento (KV) na Vercel.
+  </div>
+
+  <div id="integ-asaas" class="cartao"><div class="vazio">Carregando…</div></div>
+  <div id="integ-melhorenvio" class="cartao"></div>
 </main>
 
 <!-- ====================================================== MODAIS -->

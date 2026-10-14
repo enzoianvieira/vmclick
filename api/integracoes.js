@@ -141,7 +141,14 @@ async function acaoAsaas(acao, ambiente, valor, req) {
 async function acaoMelhorEnvio(acao, ambiente, valor) {
   if (acao === 'chave') {
     const token = String(valor || '').trim().replace(/^Bearer\s+/i, '');
-    if (token.length < 40) throw new ErroPainel(400, 'Token curto demais. Copie o token inteiro gerado no Melhor Envio.');
+    /* O token pessoal é um JWT (três partes separadas por ponto, ~1000
+       caracteres). O engano comum é colar o Client Secret do aplicativo da
+       "Área Dev", que tem 40 caracteres e não autentica nada sozinho. */
+    if (!/^[\w-]+\.[\w-]+\.[\w-]+$/.test(token) || token.length < 200) {
+      throw new ErroPainel(400, token.length <= 64
+        ? 'Isso parece o Client Secret de um aplicativo, não um token. No Melhor Envio, vá em Integrações > Permissões de acesso > Gerar novo token e cole o token inteiro (começa com eyJ).'
+        : 'Token incompleto. Copie o token inteiro gerado em Integrações > Permissões de acesso (começa com eyJ).');
+    }
     const mensagem = await testarMelhorEnvio(ambiente, token);
     await config.definirSegredo('melhorenvio', ambiente, 'token', token);
     return mensagem + ' Token salvo.';

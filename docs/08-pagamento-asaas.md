@@ -14,13 +14,13 @@ Pagar.me depois é reescrever esse arquivo, não o checkout.
 ```
 finalizar.html
    │  POST /api/pedido  { cliente, entrega, itens: [{sku, qtd}], frete: "me-3",
-   │                      forma, parcelas, totalVisto }
+   │                      forma, parcelas, totalVisto, cartao? }
    ▼
 api/pedido.js ── recalcula preço (catálogo) e frete (cotação nova)
    │             grava o pedido no KV ─────────────── api/_pedido.js, _armazem.js
    │             cria cliente + cobrança no Asaas ─── api/_asaas.js
    ▼
-pedido.html?id=…  ← Pix (QR + copia e cola), boleto (linha + PDF) ou link do cartão
+pedido.html?id=…  ← Pix (QR + copia e cola), boleto (linha + PDF) ou cartão já pago
    │  GET /api/pedido?id=…  a cada 5 s até mudar de status
    ▼
 Asaas ── POST /api/pagamento/webhook ──► pedido "pago"
@@ -32,9 +32,31 @@ são recalculados no servidor. `totalVisto` é só conferência: se o total
 recalculado for outro, o pedido é recusado com o valor novo, para ninguém ser
 cobrado de um valor que não viu.
 
-**Cartão não passa pelo site.** A cobrança é criada sem dados de cartão e o
-cliente digita o cartão na fatura hospedada do Asaas. A loja fica fora do
-escopo pesado do PCI-DSS.
+**Tudo acontece dentro do site.** O cliente nunca é mandado para a fatura do
+Asaas: Pix mostra o QR na página do pedido, boleto mostra a linha digitável, e
+o cartão é digitado no checkout, com uma prévia animada do cartão
+(`assets/js/cartao.js`). Se o QR do Pix não puder ser gerado, a cobrança é
+cancelada e o checkout pede outra forma de pagamento.
+
+**Cartão digitado no site — atenção ao PCI-DSS.** O Asaas não tem SDK para
+tokenizar no navegador, então os dados do cartão passam pelo servidor da loja
+a caminho do Asaas (`POST /payments` com `creditCard` e `remoteIp`). Isso põe a
+loja no escopo do PCI-DSS, ao contrário do que a fatura hospedada faria.
+Cuidados no código:
+- o cartão só existe na memória da chamada: não vai para pedido, KV nem log;
+- só HTTPS (Vercel);
+- recusa devolve mensagem genérica, sem o motivo da operadora;
+- 5 recusas por hora por IP bloqueiam novas tentativas de cartão, contra
+  "teste de cartão" (fraudador validando cartões roubados no checkout);
+- tempo esgotado na criação: confere pela referência antes de devolver erro,
+  para não cobrar duas vezes.
+
+Cartão aprovado volta pago na mesma chamada. Em produção, o Asaas pode exigir
+que o cartão via API seja habilitado na conta.
+
+**Teste no sandbox:** qualquer número válido (Luhn) com validade futura e CVV
+de 3 dígitos é aprovado. Recusa: Mastercard `5184019740373151`, Visa
+`4916561358240741`.
 
 **Webhook autenticado.** O Asaas manda o token no cabeçalho
 `asaas-access-token`; sem ele, 401. E mesmo com o token certo, "pago" só vale
@@ -89,9 +111,11 @@ tem chave para o ambiente em uso. O painel mostra "usando a variável do
 servidor" nesse caso. As regras do checkout (`PAGAMENTO_FORMAS`,
 `PIX_DESCONTO`, `CARTAO_MAX_PARCELAS`, `BOLETO_DIAS`) seguem só por variável.
 
-Opcional: `SITE_URL=https://vmclick.vercel.app` faz o Asaas devolver o cliente à
-página do pedido depois do cartão. Só funciona com o domínio cadastrado em
-Minha Conta > Informações comerciais — senão o Asaas recusa a cobrança.
+Opcional: `SITE_URL=https://vmclick.vercel.app` fixa o endereço usado para
+montar a URL do webhook no painel (por padrão vem do próprio acesso).
+
+**Chave Pix obrigatória.** Sem chave Pix ativa na conta, o Asaas não gera QR
+code e o Pix fica indisponível no checkout. O botão "Testar" do painel avisa.
 
 ## Testar na sua máquina
 

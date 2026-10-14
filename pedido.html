@@ -78,8 +78,8 @@ document.addEventListener('vm:ready', function () {
     });
   }
 
-  /* Só links do próprio Asaas viram botão: o endereço vem do servidor, mas
-     não custa garantir que nenhum href estranho entre na página. */
+  /* Só link do próprio Asaas vira botão (o PDF do boleto): o endereço vem
+     do servidor, mas não custa garantir que nenhum href estranho entre. */
   function urlAsaas(u) {
     return /^https:\/\/([a-z0-9-]+\.)*asaas\.com\//i.test(String(u || '')) ? u : null;
   }
@@ -129,13 +129,6 @@ document.addEventListener('vm:ready', function () {
   }
 
   function painelPix(p) {
-    if (!p.pix) {
-      return '<div class="panel stack-6"><h3>Pague com Pix</h3>' +
-        (urlAsaas(p.faturaUrl)
-          ? '<p>O QR code está na página de pagamento.</p><a class="btn btn--primary" target="_blank" rel="noopener" href="' + esc(urlAsaas(p.faturaUrl)) + '">Abrir página de pagamento</a>'
-          : '<p>Não deu para gerar o QR code agora. Atualize a página em instantes ou fale com a loja.</p>') +
-        aguardando() + '</div>';
-    }
     return '<div class="panel stack-6 pedido-pix">' +
       '<h3>Pague com Pix</h3>' +
       '<p class="muted" style="font-size:14px">Abra o app do seu banco, escolha pagar com Pix e leia o QR code ou cole o código.</p>' +
@@ -160,12 +153,12 @@ document.addEventListener('vm:ready', function () {
     '</div>';
   }
 
-  function painelCartao(p) {
-    var url = urlAsaas(p.faturaUrl);
+  /* Cartão aprovado já chega pago. Fica aqui só o caso de análise
+     antifraude do Asaas, que confirma alguns minutos depois. */
+  function painelCartao() {
     return '<div class="panel stack-6">' +
-      '<h3>Pague com cartão</h3>' +
-      '<p class="muted" style="font-size:14px">O cartão é digitado na página segura do Asaas. Se você já pagou, a confirmação aparece aqui em instantes.</p>' +
-      (url ? '<a class="btn btn--primary btn--lg" href="' + esc(url) + '">Ir para o pagamento</a>' : '') +
+      '<h3>Pagamento com cartão em análise</h3>' +
+      '<p class="muted" style="font-size:14px">A operadora está analisando o pagamento. Isso costuma levar poucos minutos e esta página atualiza sozinha.</p>' +
       aguardando() +
     '</div>';
   }
@@ -199,6 +192,7 @@ document.addEventListener('vm:ready', function () {
       vencido: ['Prazo de pagamento vencido', 'O prazo deste pagamento passou. Se ainda quiser os produtos, faça um novo pedido ou fale com a loja.'],
       cancelado: ['Cobrança cancelada', 'Este pedido foi cancelado e nada será cobrado.'],
       falhou: ['Não foi possível gerar o pagamento', 'Nada foi cobrado. Tente de novo ou fale com a loja.'],
+      recusado: ['Pagamento não autorizado', 'O cartão foi recusado e nada foi cobrado. Faça o pedido de novo com outro cartão ou com Pix.'],
       estornado: ['Pagamento estornado', 'O valor deste pedido foi devolvido.'],
       contestado: ['Pagamento em contestação', 'O pagamento está em análise junto à operadora do cartão. A loja entra em contato.'],
     };
@@ -219,7 +213,11 @@ document.addEventListener('vm:ready', function () {
       return;
     }
 
-    var painel = p.forma === 'pix' ? painelPix(p) : (p.forma === 'boleto' ? painelBoleto(p) : painelCartao(p));
+    var painel = p.forma === 'pix'
+      ? (p.pix ? painelPix(p) : '<div class="panel stack-6"><h3>Pague com Pix</h3>' +
+          '<p>O QR code deste pedido não pôde ser gerado. Fale com a loja para concluir o pagamento.</p>' +
+          '<a class="btn btn--wa" href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Falar com a loja</a></div>')
+      : (p.forma === 'boleto' ? painelBoleto(p) : painelCartao());
     raiz.innerHTML = '<div class="checkout-layout"><div>' + painel + '</div>' + resumo(p) + '</div>';
 
     raiz.querySelectorAll('[data-copiar]').forEach(function (b) {

@@ -50,6 +50,7 @@
 <script src="assets/js/app.js"></script>
 <script src="assets/js/cart.js"></script>
 <script src="assets/js/frete.js"></script>
+<script src="assets/js/cartao.js"></script>
 <script src="assets/js/catalog.js"></script>
 <script>
 document.addEventListener('vm:ready', function () {
@@ -175,7 +176,7 @@ document.addEventListener('vm:ready', function () {
     var v = valores();
     var opcoes = [
       { v: 'pix',    i: 'pix',    t: 'Pix', d: (cfg.descontoPix > 0 ? cfg.descontoPix + '% de desconto · ' : '') + 'aprovação imediata' },
-      { v: 'cartao', i: 'cartao', t: 'Cartão de crédito', d: (maxParcelas() > 1 ? 'Até ' + maxParcelas() + '× sem juros · ' : '') + 'digitado no ambiente seguro do Asaas' },
+      { v: 'cartao', i: 'cartao', t: 'Cartão de crédito', d: (maxParcelas() > 1 ? 'Até ' + maxParcelas() + '× sem juros · ' : '') + 'aprovação na hora' },
       { v: 'boleto', i: 'boleto', t: 'Boleto bancário', d: 'Vence em ' + cfg.boletoDias + ' dias · compensação em até 2 dias úteis' }
     ].filter(function (o) { return cfg.formas.indexOf(o.v) !== -1; });
 
@@ -205,10 +206,11 @@ document.addEventListener('vm:ready', function () {
           VM.icon(o.i) +
           '<span><span class="pay-opt__t">' + o.t + '</span><span class="pay-opt__d">' + o.d + '</span></span></label>';
       }).join('') + '</div>' +
+      (pagamento === 'cartao' ? VMCartao.html() : '') +
       seletorParcelas +
       (pagamento === 'cartao'
-        ? '<p class="frete-nota">Ao continuar você vai para a página de pagamento do Asaas, onde digita o cartão. ' +
-          'O site da VM Click não recebe nem guarda dados de cartão.</p>'
+        ? '<p class="frete-nota">Pagamento processado pelo Asaas em conexão segura. ' +
+          'Os dados do cartão não ficam guardados no site.</p>'
         : '') +
       '<div id="erro-pagamento"></div>' +
     '</div>';
@@ -282,6 +284,8 @@ document.addEventListener('vm:ready', function () {
     document.querySelectorAll('input[name="pgto"]').forEach(function (r) {
       r.addEventListener('change', function () { pagamento = this.value; render(); });
     });
+
+    if (passo === 3 && pagamento === 'cartao') VMCartao.ligar(raiz);
 
     var selParcelas = document.getElementById('parcelas');
     if (selParcelas) selParcelas.addEventListener('change', function () {
@@ -428,6 +432,18 @@ document.addEventListener('vm:ready', function () {
       return false;
     }
 
+    if (passo === 3 && pagamento === 'cartao') {
+      document.querySelectorAll('.cc-campos .field').forEach(function (f) { f.classList.remove('is-invalid'); });
+      var erroCartao = VMCartao.validar();
+      if (erroCartao) {
+        var campoCartao = document.getElementById(erroCartao.campo);
+        campoCartao.closest('.field').classList.add('is-invalid');
+        campoCartao.focus();
+        VM.toast(erroCartao.msg, 'warn');
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -444,7 +460,7 @@ document.addEventListener('vm:ready', function () {
 
     var botao = document.getElementById('avancar');
     botao.disabled = true;
-    botao.textContent = 'Gerando pagamento…';
+    botao.textContent = pagamento === 'cartao' ? 'Processando pagamento…' : 'Gerando pagamento…';
 
     var frete = VMFrete.selecionada();
     var corpo = {
@@ -459,6 +475,9 @@ document.addEventListener('vm:ready', function () {
       parcelas: pagamento === 'cartao' ? parcelas : 1,
       totalVisto: valores().total,
     };
+    /* Cartão vai direto do campo para a requisição: não passa por `dados`
+       nem fica guardado no navegador. */
+    if (pagamento === 'cartao') corpo.cartao = VMCartao.dados();
 
     fetch('/api/pedido', {
       method: 'POST',
@@ -482,15 +501,12 @@ document.addEventListener('vm:ready', function () {
       VMFrete.limpar();
       VMCart.limpar();
 
-      /* Cartão vai direto para a fatura do Asaas; a página do pedido também
-         oferece o link, para quem fechar a aba antes de pagar. */
-      window.location.href = pedido.forma === 'cartao' && pedido.faturaUrl
-        ? pedido.faturaUrl
-        : 'pedido.html?id=' + encodeURIComponent(pedido.id);
+      window.location.href = 'pedido.html?id=' + encodeURIComponent(pedido.id);
     }).catch(function (e) {
       enviando = false;
       botao.disabled = false;
       botao.textContent = textoBotao();
+      if (pagamento === 'cartao') VMCartao.limparCvv();
       mostrarErro(e.message);
     });
   }

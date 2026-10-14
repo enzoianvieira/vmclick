@@ -46,6 +46,11 @@ const LIMITE_POR_HORA = 10;
 
 const MAX_ITENS = 60;
 
+/* Cartão recusado conta à parte e com teto menor. Checkout que aceita
+   cartão digitado vira alvo de "teste de cartão": fraudador validando
+   cartões roubados aos montes. */
+const RECUSAS_POR_HORA = 5;
+
 /* ---------------------------------------------------------- utilitários --- */
 
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -150,6 +155,46 @@ function normalizarItens(bruto) {
     .slice(0, MAX_ITENS);
 }
 
+/* Luhn: o dígito verificador de todo número de cartão. Pega erro de
+   digitação antes de gastar uma tentativa na operadora. */
+function luhn(numero) {
+  let soma = 0;
+  for (let i = 0; i < numero.length; i++) {
+    let d = Number(numero[numero.length - 1 - i]);
+    if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
+    soma += d;
+  }
+  return soma % 10 === 0;
+}
+
+/**
+ * Valida o cartão e devolve no formato do Asaas. Fica só na memória desta
+ * chamada: não entra no pedido, no KV nem em log.
+ */
+function validarCartao(c) {
+  c = c || {};
+  const nome = texto(c.nome, 60);
+  const numero = digitos(c.numero);
+  const mes = Math.floor(Number(c.mes));
+  let ano = digitos(c.ano);
+  if (ano.length === 2) ano = '20' + ano;
+  const cvv = digitos(c.cvv);
+
+  if (nome.length < 3) throw new ErroPedido(400, 'Informe o nome impresso no cartão.');
+  if (numero.length < 13 || numero.length > 19 || !luhn(numero)) throw new ErroPedido(400, 'Número do cartão inválido.');
+  if (!(mes >= 1 && mes <= 12) || ano.length !== 4) throw new ErroPedido(400, 'Validade do cartão inválida.');
+
+  const agora = new Date();
+  const anoAtual = agora.getUTCFullYear();
+  const mesAtual = agora.getUTCMonth() + 1;
+  if (Number(ano) < anoAtual || (Number(ano) === anoAtual && mes < mesAtual) || Number(ano) > anoAtual + 20) {
+    throw new ErroPedido(400, 'Cartão vencido ou validade inválida.');
+  }
+  if (cvv.length < 3 || cvv.length > 4) throw new ErroPedido(400, 'Código de segurança (CVV) inválido.');
+
+  return { nome, numero, mes: String(mes).padStart(2, '0'), ano, cvv };
+}
+
 /** Preço e nome saem do catálogo do servidor, nunca do navegador. */
 function precificar(itens) {
   const cat = catalogo();
@@ -228,6 +273,14 @@ async function criar(req, res) {
 
   if (total < VALOR_MINIMO) throw new ErroPedido(400, `O valor mínimo para pagamento online é R$ ${VALOR_MINIMO},00.`);
 
+  const cartao = forma === 'cartao' ? validarCartao(corpo.cartao) : null;
+  if (cartao) {
+    const recusas = Number(await armazem.ler(`vmclick:limite:recusa:${ipDe(req)}`)) || 0;
+    if (recusas >= RECUSAS_POR_HORA) {
+      throw new ErroPedido(429, 'Muitas tentativas de cartão recusadas. Tente de novo mais tarde ou use Pix.');
+    }
+  }
+
   let parcelas = 1;
   if (forma === 'cartao') {
     parcelas = Math.max(1, Math.floor(Number(corpo.parcelas) || 1));
@@ -260,11 +313,11 @@ async function criar(req, res) {
   };
   await pedidos.gravar(pedido);
 
+  let cobranca;
   try {
     const idCliente = await asaas.garantirCliente({ ...cliente, cep: endereco.cep, numero: endereco.numero, compl: endereco.compl });
 
-    const site = (process.env.SITE_URL || '').replace(/\/$/, '');
-    const cobranca = await asaas.criarCobranca({
+    const dados = {
       cliente: idCliente,
       forma,
       valor: total,
@@ -272,41 +325,69 @@ async function criar(req, res) {
       vencimento: dataBrasilia(forma === 'boleto' ? BOLETO_DIAS : forma === 'pix' ? 1 : 0),
       descricao: `Pedido ${pedido.numero} - VM Click`,
       referencia: pedido.id,
-      retorno: forma === 'cartao' && site ? `${site}/pedido.html?id=${pedido.id}` : null,
-    });
+    };
+    if (cartao) {
+      dados.cartao = cartao;
+      dados.titular = { ...cliente, cep: endereco.cep, numero: endereco.numero };
+      dados.ip = ipDe(req);
+    }
+
+    try {
+      cobranca = await asaas.criarCobranca(dados);
+    } catch (e) {
+      /* Tempo esgotado ou rede: a cobrança pode ter sido criada mesmo assim.
+         Confere pela referência antes de devolver erro - senão o cliente
+         tenta de novo e paga duas vezes. */
+      if (e instanceof ErroPagamento) throw e;
+      cobranca = await asaas.cobrancaPorReferencia(pedido.id).catch(() => null);
+      if (!cobranca) throw new ErroPedido(504, 'O pagamento não respondeu a tempo. Nada foi cobrado; tente de novo.');
+    }
 
     pedido.asaas = {
       cliente: idCliente,
       cobranca: cobranca.id,
       parcelamento: cobranca.parcelamento,
-      faturaUrl: cobranca.faturaUrl,
       boletoUrl: cobranca.boletoUrl,
     };
     await pedidos.vincularCobranca(pedido, cobranca);
 
-    /* QR e linha digitável vão junto do pedido: a página do pedido consulta
-       a cada poucos segundos e não deve ir ao Asaas toda vez. Falhar aqui não
-       derruba o pedido - a fatura (faturaUrl) também mostra os dois. */
+    /* O QR é o pagamento: sem ele o Pix não acontece dentro do site. Tenta
+       duas vezes; se não vier, cancela a cobrança e pede outra forma, em vez
+       de deixar o cliente com um pedido que não tem como pagar. */
     if (forma === 'pix') {
-      try { pedido.pix = await asaas.pix(cobranca.id); } catch (e) { pedido.pix = null; }
+      pedido.pix = await asaas.pix(cobranca.id).catch(() => null);
+      if (!pedido.pix) {
+        await new Promise((r) => setTimeout(r, 800));
+        pedido.pix = await asaas.pix(cobranca.id).catch((e) => {
+          console.error('[pedido] QR Pix indisponível:', e.message);
+          return null;
+        });
+      }
+      if (!pedido.pix) {
+        await asaas.cancelarCobranca(cobranca.id);
+        throw new ErroPedido(503, 'O Pix está indisponível agora. Escolha outra forma de pagamento ou tente em instantes.');
+      }
     }
     if (forma === 'boleto') {
-      try { pedido.boleto = { linha: await asaas.linhaDigitavel(cobranca.id) }; } catch (e) { pedido.boleto = null; }
+      pedido.boleto = { linha: await asaas.linhaDigitavel(cobranca.id).catch(() => null) };
     }
 
     await pedidos.gravar(pedido);
   } catch (e) {
-    await pedidos.mudarStatus(pedido.id, 'falhou', e.message).catch(() => {});
+    const recusado = e instanceof ErroPagamento && e.status === 402;
+    if (recusado) await armazem.incrementar(`vmclick:limite:recusa:${ipDe(req)}`, 3600).catch(() => {});
+    await pedidos.mudarStatus(pedido.id, recusado ? 'recusado' : 'falhou', recusado ? 'cartão recusado' : e.message).catch(() => {});
     throw e;
   }
 
-  return res.status(201).json({
-    id: pedido.id,
-    numero: pedido.numero,
-    forma,
-    total,
-    faturaUrl: pedido.asaas.faturaUrl,
-  });
+  /* Cartão aprovado já volta pago na mesma chamada. */
+  let status = pedido.status;
+  if (cobranca.pago) {
+    const pago = await pedidos.mudarStatus(pedido.id, 'pago', 'checkout');
+    if (pago) status = pago.status;
+  }
+
+  return res.status(201).json({ id: pedido.id, numero: pedido.numero, forma, total, status });
 }
 
 /* -------------------------------------------------------------- consultar --- */

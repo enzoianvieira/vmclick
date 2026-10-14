@@ -53,7 +53,13 @@ async function testarAsaas(ambiente, chave) {
   if (!chave) throw new ErroPainel(400, `Nenhuma chave do Asaas cadastrada em ${ROTULO[ambiente]}.`);
   try {
     const r = await asaas.testar({ ambiente, chave });
-    return `Conectado ao Asaas (${ROTULO[ambiente]}). Saldo: ${r.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`;
+    const saldo = `Conectado ao Asaas (${ROTULO[ambiente]}). Saldo: ${r.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`;
+    /* Sem chave Pix o Asaas não gera QR code: melhor saber aqui do que no
+       primeiro cliente que escolher Pix. */
+    if (r.chavesPix === 0) {
+      return `${saldo} ATENÇÃO: a conta não tem chave Pix cadastrada - o Pix não vai funcionar. Cadastre uma em Pix > Minhas chaves no Asaas.`;
+    }
+    return saldo;
   } catch (e) {
     throw new ErroPainel(400, `O Asaas recusou a chave em ${ROTULO[ambiente]}: ${e.message}`);
   }

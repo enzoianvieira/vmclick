@@ -76,6 +76,7 @@ const ORIGENS = {
   vencido: ['aguardando'],
   cancelado: ['aguardando', 'vencido'],
   falhou: ['aguardando'],
+  recusado: ['aguardando'],
   estornado: ['pago', 'contestado'],
   contestado: ['pago'],
 };
@@ -129,7 +130,6 @@ function visaoPublica(p) {
     boleto: aguardando && p.forma === 'boleto'
       ? { url: p.asaas && p.asaas.boletoUrl, linha: p.boleto && p.boleto.linha }
       : null,
-    faturaUrl: aguardando && p.asaas ? p.asaas.faturaUrl : null,
   };
 }
 

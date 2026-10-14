@@ -8,9 +8,15 @@
  * A chave da API movimenta a conta: cria cobrança, estorna, transfere. Fica
  * só no servidor, como o token do Melhor Envio.
  *
- * Cartão não passa por aqui nem pelo site: a cobrança é criada sem dados de
- * cartão e o cliente digita o cartão na fatura hospedada do Asaas
- * (invoiceUrl). Isso mantém a loja fora do escopo pesado do PCI-DSS.
+ * Todo o pagamento acontece dentro do site: Pix com QR na página do pedido,
+ * boleto com linha digitável, e cartão digitado no checkout e enviado daqui
+ * para o Asaas. O cliente nunca é mandado para a fatura do Asaas.
+ *
+ * CARTÃO - CUIDADO
+ * Os dados do cartão passam por este servidor a caminho do Asaas (o Asaas não
+ * tem SDK para tokenizar no navegador). Isso põe a loja no escopo do PCI-DSS.
+ * Regras deste arquivo: o cartão só existe na memória da chamada, nunca vai
+ * para log, KV ou pedido, e nenhuma mensagem de erro repete o corpo enviado.
  *
  * Chave e ambiente vêm do painel administrativo (aba Integrações) e, na
  * falta dele, das variáveis de ambiente - ver _config.js:
@@ -51,6 +57,9 @@ async function chamar(metodo, caminho, corpo, cfg) {
 
   const res = await fetch(BASES[c.ambiente] + caminho, {
     method: metodo,
+    /* cartão pode levar alguns segundos na operadora; sem teto, uma
+       requisição presa seguraria a função até o limite da Vercel */
+    signal: AbortSignal.timeout(25_000),
     headers: {
       access_token: c.chave,
       'Content-Type': 'application/json',
@@ -67,6 +76,7 @@ async function chamar(metodo, caminho, corpo, cfg) {
 
   if (!res.ok) {
     const descricao = json.errors && json.errors[0] && json.errors[0].description;
+    /* só a resposta vai para o log - nunca o corpo enviado, que pode ter cartão */
     console.error(`[asaas] ${metodo} ${caminho} -> ${res.status}`, descricao || texto.slice(0, 300));
 
     if (res.status === 401) {
@@ -113,10 +123,12 @@ async function garantirCliente(c) {
 /**
  * Cria a cobrança e devolve só o que o resto do projeto usa.
  *
- * `parcelas` > 1 vale para cartão: o Asaas cria um parcelamento e cobra o
- * total no cartão de uma vez, em N parcelas.
+ * Cartão: `cartao` ({ nome, numero, mes, ano, cvv }), `titular` (dados de
+ * quem paga, usados na análise antifraude) e `ip` do comprador. O Asaas
+ * processa na hora: aprovado volta 200, recusado volta 400 e a cobrança nem
+ * é criada. `parcelas` > 1 cobra o total no cartão em N vezes.
  */
-async function criarCobranca({ cliente, forma, valor, vencimento, descricao, referencia, parcelas, retorno }) {
+async function criarCobranca({ cliente, forma, valor, vencimento, descricao, referencia, parcelas, cartao, titular, ip }) {
   const tipo = TIPO[forma];
   if (!tipo) throw new ErroPagamento(400, 'Forma de pagamento inválida');
 
@@ -135,19 +147,61 @@ async function criarCobranca({ cliente, forma, valor, vencimento, descricao, ref
     corpo.value = valor;
   }
 
-  /* Volta para a página do pedido depois do cartão. O Asaas só aceita se o
-     domínio estiver cadastrado em Minha Conta > Informações comerciais - por
-     isso é opcional. */
-  if (retorno) corpo.callback = { successUrl: retorno, autoRedirect: true };
+  if (forma === 'cartao') {
+    corpo.creditCard = {
+      holderName: cartao.nome,
+      number: cartao.numero,
+      expiryMonth: cartao.mes,
+      expiryYear: cartao.ano,
+      ccv: cartao.cvv,
+    };
+    corpo.creditCardHolderInfo = {
+      name: titular.nome,
+      email: titular.email,
+      cpfCnpj: titular.doc,
+      postalCode: titular.cep,
+      addressNumber: titular.numero || 'S/N',
+      phone: titular.tel,
+      mobilePhone: titular.tel,
+    };
+    corpo.remoteIp = ip;
+  }
 
-  const c = await chamar('POST', '/payments', corpo);
+  let c;
+  try {
+    c = await chamar('POST', '/payments', corpo);
+  } catch (e) {
+    /* Recusa de cartão: mensagem fixa e genérica. A do Asaas pode dizer o
+       motivo da operadora, e isso ajuda quem testa cartão roubado. */
+    if (forma === 'cartao' && e instanceof ErroPagamento && e.status === 400) {
+      throw new ErroPagamento(402, 'Pagamento não autorizado. Confira os dados do cartão ou use outro cartão.');
+    }
+    throw e;
+  }
+
   return {
     id: c.id,
     parcelamento: c.installment || null,
     status: c.status,
-    faturaUrl: c.invoiceUrl || null,
+    pago: PAGOS.includes(c.status),
     boletoUrl: c.bankSlipUrl || null,
   };
+}
+
+/**
+ * Cobrança já criada para um pedido. Serve quando a criação cai por tempo
+ * esgotado: antes de tentar de novo (e cobrar duas vezes), confere se ela
+ * chegou a existir.
+ */
+async function cobrancaPorReferencia(referencia) {
+  const r = await chamar('GET', `/payments?externalReference=${encodeURIComponent(referencia)}&limit=1`);
+  const c = r.data && r.data[0];
+  return c ? { id: c.id, parcelamento: c.installment || null, status: c.status, pago: PAGOS.includes(c.status), boletoUrl: c.bankSlipUrl || null } : null;
+}
+
+/** Remove uma cobrança pendente (ex.: Pix sem QR). Melhor esforço. */
+async function cancelarCobranca(id) {
+  try { await chamar('DELETE', `/payments/${encodeURIComponent(id)}`); } catch (e) { /* segue */ }
 }
 
 async function consultarCobranca(id) {
@@ -186,10 +240,18 @@ function chaveCombinaComAmbiente(chave, ambiente) {
   return true;
 }
 
-/** Confere se a chave funciona, lendo o saldo da conta. */
+/**
+ * Confere se a chave funciona, lendo o saldo da conta, e se há chave Pix
+ * ativa - sem ela o Asaas não gera QR code e o Pix do site não funciona.
+ */
 async function testar(cfg) {
   const r = await chamar('GET', '/finance/balance', null, cfg);
-  return { saldo: Number(r.balance) || 0 };
+  let chavesPix = null;
+  try {
+    const k = await chamar('GET', '/pix/addressKeys?status=ACTIVE&limit=1', null, cfg);
+    chavesPix = Number(k.totalCount != null ? k.totalCount : (k.data || []).length);
+  } catch (e) { chavesPix = null; }
+  return { saldo: Number(r.balance) || 0, chavesPix };
 }
 
 const EVENTOS_WEBHOOK = [
@@ -228,7 +290,7 @@ async function configurarWebhook(url, email, cfg) {
 }
 
 module.exports = {
-  garantirCliente, criarCobranca, consultarCobranca, pix, linhaDigitavel,
+  garantirCliente, criarCobranca, consultarCobranca, cobrancaPorReferencia, cancelarCobranca, pix, linhaDigitavel,
   chaveCombinaComAmbiente, testar, configurarWebhook,
   ErroPagamento, PAGOS,
 };

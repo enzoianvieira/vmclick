@@ -18,6 +18,8 @@ const armazem = require('./_armazem.js');
 
 const SITUACAO_APROVADA = 3;
 
+const MARCADOR = process.env.OLIST_MARCADOR || 'Site VM Click';
+
 const FORMA = { pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de crédito' };
 
 function hoje() {
@@ -110,6 +112,14 @@ async function enviarAoOlist(pedido) {
     }
 
     const r = await olistEnviar('POST', '/pedidos', corpo);
+
+    /* Marcador "Site VM Click": em Vendas > Pedidos de Venda dá para filtrar
+       só os pedidos do site. (A API v3 não tem como ligar o pedido a um canal
+       de "Pedidos no e-commerce"; o marcador é o filtro que funciona.)
+       Melhor esforço: o pedido já existe, falhar aqui não o desfaz. */
+    await olistEnviar('POST', `/pedidos/${r.id}/marcadores`, [{ descricao: MARCADOR }])
+      .catch((e) => console.error('[expedicao] marcador no Olist:', e.message));
+
     return { id: r.id, numero: r.numeroPedido, em: new Date().toISOString() };
   } finally {
     await armazem.apagar(trava).catch(() => {});

@@ -892,7 +892,69 @@
     $('#integ-sem-kv').hidden = integ.armazenamento;
     $('#integ-asaas').innerHTML = cartaoIntegracao('asaas');
     $('#integ-melhorenvio').innerHTML = cartaoIntegracao('melhorenvio');
+    $('#integ-email').innerHTML = cartaoEmail();
   }
+
+  /* ---- e-mail (Resend): uma chave, um remetente, sem ambientes ---- */
+
+  function cartaoEmail() {
+    var d = integ.email || {};
+    var situacao = d.configurada
+      ? '<span class="selo selo--ok">cadastrada</span><span class="final">' + esc(d.final) + '</span>' + (d.em ? '<span class="final">em ' + data(d.em) + '</span>' : '')
+      : (d.origemChave === 'ambiente' ? '<span class="selo selo--neutro">usando a variável do servidor</span>' : '<span class="selo selo--aviso">não configurado</span>');
+    return '<div class="integ__cab"><div><h3>E-mail <span class="selo selo--teal">Resend</span></h3>' +
+        '<p>Código de acesso do "Minha conta" e avisos de pedido recebido, pagamento confirmado e envio.</p></div></div>' +
+      '<div class="integ-amb">' +
+        '<div class="integ-amb__topo"><b>Chave da API</b>' + situacao + '</div>' +
+        '<div class="campo"><label for="email-remetente">Remetente</label>' +
+          '<input id="email-remetente" maxlength="120" placeholder="VM Click &lt;pedidos@vmclick.com.br&gt;" value="' + esc(d.remetente || '') + '">' +
+          '<span class="dica">Precisa ser de um domínio verificado no Resend (Domains). Antes disso, os e-mails só chegam ao dono da conta Resend.</span></div>' +
+        '<div class="campo"><label for="email-chave">Chave' + (d.configurada ? ' (substituir)' : '') + '</label>' +
+          '<div class="busca-linha"><input id="email-chave" type="password" autocomplete="off" spellcheck="false" placeholder="re_…">' +
+          '<button class="bt bt--principal" type="button" data-email="salvar">Salvar e testar</button>' +
+          (d.configurada ? '<button class="bt bt--perigo" type="button" data-email="remover">Remover</button>' : '') + '</div>' +
+          '<span class="dica">Em resend.com: API Keys > Create API Key (permissão "Sending access"). Grátis até 3.000 e-mails por mês.</span></div>' +
+      '</div>' +
+      '<div class="integ-amb">' +
+        '<div class="campo"><label for="email-teste">Enviar e-mail de teste para</label>' +
+          '<div class="busca-linha"><input id="email-teste" type="email" placeholder="voce@email.com">' +
+          '<button class="bt bt--linha" type="button" data-email="teste"' + (d.configurada || d.origemChave ? '' : ' disabled') + '>Enviar teste</button></div></div>' +
+      '</div>' +
+      '<p class="integ-msg" data-msg aria-live="polite"></p>';
+  }
+
+  $('#integ-email').addEventListener('click', function (e) {
+    var bt = e.target.closest('[data-email]');
+    if (!bt || bt.disabled || !integ) return;
+    var acao = bt.dataset.email;
+    var valor = {};
+    if (acao === 'salvar') {
+      valor.remetente = $('#email-remetente').value.trim();
+      var chave = $('#email-chave').value.trim();
+      if (chave) valor.chave = chave;
+    }
+    if (acao === 'teste') valor.para = $('#email-teste').value.trim();
+    if (acao === 'remover' && !confirm('Remover a chave do Resend? O site para de mandar e-mails.')) return;
+
+    var original = bt.textContent;
+    bt.disabled = true;
+    bt.textContent = 'Aguarde…';
+    mensagem('email', '');
+    API.integracao('email', acao, null, valor)
+      .then(function (r) {
+        var url = integ.webhookUrl, local = integ.webhookLocal;
+        integ = r.situacao; integ.webhookUrl = url; integ.webhookLocal = local;
+        renderIntegracoes();
+        mensagem('email', r.mensagem, /ATENÇÃO|ainda não/.test(r.mensagem));
+        aviso(r.mensagem);
+      })
+      .catch(function (err) {
+        bt.disabled = false;
+        bt.textContent = original;
+        mensagem('email', err.message, true);
+      });
+  });
+
 
   function carregarIntegracoes() {
     API.integracoes()

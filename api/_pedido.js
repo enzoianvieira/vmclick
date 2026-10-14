@@ -20,6 +20,7 @@ const crypto = require('crypto');
 
 const armazem = require('./_armazem.js');
 const expedicao = require('./_expedicao.js');
+const email = require('./_email.js');
 
 /* Pedido não expira: é o histórico que o painel e o "Meus pedidos" mostram.
    Os vínculos de cobrança, que só servem ao webhook, duram meio ano. */
@@ -177,9 +178,13 @@ async function mudarStatus(id, novo, origem, extra) {
   if (novo === 'pago') {
     console.log(`[pedido] ${pedido.numero} pago (${origem})`);
     pedido = (await enviarAoOlist(id)) || pedido;
+    await email.pagamentoConfirmado(pedido);
   }
-  if (novo === 'enviado' && pedido.rastreio) {
-    await expedicao.despachoNoOlist(pedido).catch((e) => console.error('[pedido] rastreio no Olist:', e.message));
+  if (novo === 'enviado') {
+    if (pedido.rastreio) {
+      await expedicao.despachoNoOlist(pedido).catch((e) => console.error('[pedido] rastreio no Olist:', e.message));
+    }
+    await email.pedidoEnviado(pedido);
   }
 
   return pedido;

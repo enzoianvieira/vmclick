@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minha conta | VM Click</title>
+<meta name="description" content="Acompanhe seus pedidos na VM Click.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/img/brand/favicon-180.png">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
+<script>document.documentElement.classList.add('js-anim');</script>
+<style>
+  .conta-caixa { max-width: 440px; margin-inline: auto; }
+  .conta-caixa h2 { margin: 0; }
+  .conta-codigo { font-family: var(--font-mono, monospace); font-size: 26px; letter-spacing: .4em; text-align: center; }
+  .conta-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: var(--fs-sm); }
+  .conta-links button { background: none; border: 0; padding: 0; font: inherit; color: var(--link); cursor: pointer; text-decoration: underline; }
+  .conta-links button:disabled { color: var(--text-subtle); cursor: default; text-decoration: none; }
+  .conta-topo { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: var(--sp-6); }
+  .conta-topo p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--fs-sm); word-break: break-all; }
+  .pedidos-lista { display: grid; gap: var(--sp-4); }
+  .pedido-card { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .pedido-card__topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pedido-card__topo b { font-size: 16px; color: var(--text); }
+  .pedido-card__meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .pedido-card__itens { font-size: var(--fs-sm); color: var(--text-body); margin-top: 6px; }
+  .pedido-card__dir { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .pedido-card__dir strong { font-size: 17px; color: var(--text); }
+  @media (max-width: 560px) {
+    .pedido-card { grid-template-columns: minmax(0, 1fr); }
+    .pedido-card__dir { flex-direction: row; justify-content: space-between; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="site-header" id="site-header"></header>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="container">
+      <nav class="woocommerce-breadcrumb" aria-label="Você está aqui">
+        <a href="index.html">Início</a><span class="sep">/</span>
+        <span aria-current="page">Minha conta</span>
+      </nav>
+      <h1>Minha conta</h1>
+      <p>Acompanhe seus pedidos, o pagamento e a entrega.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container" id="conta"></div>
+  </section>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="data/produtos.js"></script>
+<script src="assets/js/sprite.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/js/app.js?v=20261013d"></script>
+<script src="assets/js/cart.js?v=20261013b"></script>
+<script src="assets/js/campos.js?v=20261013c"></script>
+<script>
+document.addEventListener('vm:ready', function () {
+  var raiz = document.getElementById('conta');
+  var emailDigitado = '';
+  var esperaReenvio = null;
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function chamar(metodo, corpo) {
+    return fetch('/api/conta', {
+      method: metodo,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: corpo ? JSON.stringify(corpo) : undefined,
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = {};
+        try { j = JSON.parse(t); } catch (e) { j = {}; }
+        if (!r.ok) { var err = new Error(j.erro || 'Serviço indisponível no momento.'); err.status = r.status; throw err; }
+        return j;
+      });
+    });
+  }
+
+  function erro(msg) {
+    var alvo = document.getElementById('conta-erro');
+    if (alvo) alvo.innerHTML = msg ? '<div class="frete-aviso" role="alert"><p>' + esc(msg) + '</p></div>' : '';
+  }
+
+  /* ------------------------------------------------------------- entrar */
+
+  function telaEmail() {
+    raiz.innerHTML =
+      '<form class="panel stack-6 conta-caixa" id="form-email" novalidate>' +
+        '<div><h2>Entrar</h2><p class="muted" style="margin:6px 0 0;font-size:14px">Use o e-mail da sua compra. Mandamos um código para você entrar, sem senha.</p></div>' +
+        '<div class="field"><label for="conta-email">E-mail</label>' +
+          '<input id="conta-email" data-campo="email" type="email" autocomplete="email" maxlength="120" placeholder="voce@email.com" value="' + esc(emailDigitado) + '">' +
+          '<span class="err">Informe um e-mail válido.</span></div>' +
+        '<div id="conta-erro"></div>' +
+        '<button class="btn btn--primary btn--lg btn--block" type="submit">Receber código</button>' +
+      '</form>';
+    VMCampos.ligar(raiz);
+    var campo = document.getElementById('conta-email');
+    campo.focus();
+
+    document.getElementById('form-email').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var msg = VMCampos.erro('email', campo.value);
+      if (!campo.value.trim() || msg) { VMCampos.marcar(campo, msg || 'Informe seu e-mail.'); campo.focus(); return; }
+      emailDigitado = campo.value.trim().toLowerCase();
+      var bt = ev.target.querySelector('button[type=submit]');
+      bt.disabled = true; bt.textContent = 'Enviando…';
+      chamar('POST', { acao: 'codigo', email: emailDigitado })
+        .then(telaCodigo)
+        .catch(function (e) { bt.disabled = false; bt.textContent = 'Receber código'; erro(e.message); });
+    });
+  }
+
+  function telaCodigo() {
+    raiz.innerHTML =
+      '<form class="panel stack-6 conta-caixa" id="form-codigo" novalidate>' +
+        '<div><h2>Digite o código</h2><p class="muted" style="margin:6px 0 0;font-size:14px">Enviamos um código de 6 dígitos para <b>' + esc(emailDigitado) + '</b>. Ele vale por 10 minutos. Confira também o spam.</p></div>' +
+        '<div class="field"><label for="conta-codigo">Código</label>' +
+          '<input id="conta-codigo" class="conta-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">' +
+          '<span class="err">O código tem 6 dígitos.</span></div>' +
+        '<div id="conta-erro"></div>' +
+        '<button class="btn btn--primary btn--lg btn--block" type="submit">Entrar</button>' +
+        '<div class="conta-links"><button type="button" id="trocar-email">Trocar e-mail</button>' +
+          '<button type="button" id="reenviar" disabled>Reenviar código</button></div>' +
+      '</form>';
+
+    var campo = document.getElementById('conta-codigo');
+    campo.focus();
+    campo.addEventListener('input', function () {
+      campo.value = campo.value.replace(/\D/g, '').slice(0, 6);
+      VMCampos.marcar(campo, '');
+      if (campo.value.length === 6) document.getElementById('form-codigo').requestSubmit();
+    });
+
+    /* reenvio liberado depois de 30 s: evita clique repetido e e-mail em dobro */
+    var reenviar = document.getElementById('reenviar');
+    var falta = 30;
+    clearInterval(esperaReenvio);
+    reenviar.textContent = 'Reenviar código (' + falta + ' s)';
+    esperaReenvio = setInterval(function () {
+      falta--;
+      if (falta <= 0) { clearInterval(esperaReenvio); reenviar.disabled = false; reenviar.textContent = 'Reenviar código'; }
+      else reenviar.textContent = 'Reenviar código (' + falta + ' s)';
+    }, 1000);
+
+    reenviar.addEventListener('click', function () {
+      reenviar.disabled = true;
+      chamar('POST', { acao: 'codigo', email: emailDigitado })
+        .then(function () { telaCodigo(); VM.toast('Enviamos um novo código.'); })
+        .catch(function (e) { reenviar.disabled = false; erro(e.message); });
+    });
+    document.getElementById('trocar-email').addEventListener('click', function () { clearInterval(esperaReenvio); telaEmail(); });
+
+    document.getElementById('form-codigo').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (campo.value.length !== 6) { VMCampos.marcar(campo, 'O código tem 6 dígitos.'); campo.focus(); return; }
+      var bt = ev.target.querySelector('button[type=submit]');
+      bt.disabled = true; bt.textContent = 'Entrando…';
+      chamar('POST', { acao: 'entrar', email: emailDigitado, codigo: campo.value })
+        .then(function () { clearInterval(esperaReenvio); carregar(); })
+        .catch(function (e) {
+          bt.disabled = false; bt.textContent = 'Entrar';
+          campo.value = ''; campo.focus();
+          erro(e.message);
+        });
+    });
+  }
+
+  /* --------------------------------------------------------- meus pedidos */
+
+  var SITUACAO = {
+    aguardando: ['Aguardando pagamento', 'badge--warn'],
+    pago: ['Pagamento confirmado', 'badge--info'],
+    separacao: ['Em separação', 'badge--info'],
+    enviado: ['Enviado', 'badge--info', 'Pronto para retirar'],
+    entregue: ['Entregue', 'badge--ok', 'Retirado'],
+    vencido: ['Pagamento vencido', 'badge--ghost'],
+    cancelado: ['Cancelado', 'badge--ghost'],
+    recusado: ['Pagamento recusado', 'badge--ghost'],
+    estornado: ['Estornado', 'badge--bad'],
+    contestado: ['Em análise', 'badge--bad'],
+  };
+  var FORMA = { pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão' };
+
+  function selo(p) {
+    var s = SITUACAO[p.status] || [p.status, 'badge--ghost'];
+    var texto = p.entrega && p.entrega.tipo === 'retirada' && s[2] ? s[2] : s[0];
+    return '<span class="badge ' + s[1] + '">' + esc(texto) + '</span>';
+  }
+
+  function cartaoPedido(p) {
+    var qtd = p.itens.reduce(function (s, i) { return s + i.qtd; }, 0);
+    var nomes = p.itens.slice(0, 2).map(function (i) { return i.qtd + '× ' + i.nome; }).join(' · ') +
+      (p.itens.length > 2 ? ' e mais ' + (p.itens.length - 2) : '');
+    var pagar = p.status === 'aguardando' && (p.forma === 'pix' || p.forma === 'boleto');
+    var link = 'pedido.html?id=' + encodeURIComponent(p.id);
+    return '<article class="panel pedido-card">' +
+      '<div>' +
+        '<div class="pedido-card__topo"><b>' + esc(p.numero) + '</b>' + selo(p) + '</div>' +
+        '<div class="pedido-card__meta">' + esc(new Date(p.criadoEm).toLocaleDateString('pt-BR')) + ' · ' + qtd + (qtd === 1 ? ' item' : ' itens') +
+          ' · ' + esc(FORMA[p.forma] || p.forma) + ' · ' + esc(p.entrega.servico || '') + '</div>' +
+        '<div class="pedido-card__itens">' + esc(nomes) + '</div>' +
+      '</div>' +
+      '<div class="pedido-card__dir"><strong>' + VM.money(p.total) + '</strong>' +
+        '<a class="btn ' + (pagar ? 'btn--primary' : 'btn--secondary') + ' btn--sm" href="' + link + '">' + (pagar ? 'Pagar agora' : 'Ver pedido') + '</a></div>' +
+    '</article>';
+  }
+
+  function telaPedidos(d) {
+    raiz.innerHTML =
+      '<div class="conta-topo"><div><h2 style="margin:0">Meus pedidos</h2><p>' + esc(d.email) + '</p></div>' +
+        '<button class="btn btn--ghost btn--sm" type="button" id="sair">Sair</button></div>' +
+      (d.pedidos.length
+        ? '<div class="pedidos-lista">' + d.pedidos.map(cartaoPedido).join('') + '</div>'
+        : '<div class="empty-state">' + VM.icon('caixa') + '<h3>Nenhum pedido com este e-mail</h3>' +
+          '<p class="muted" style="margin-top:8px">Os pedidos aparecem aqui quando você compra usando ' + esc(d.email) + '.</p>' +
+          '<a class="btn btn--primary" style="margin-top:24px" href="produtos.html">Ver produtos</a></div>');
+
+    document.getElementById('sair').addEventListener('click', function () {
+      chamar('DELETE').finally(function () { emailDigitado = ''; telaEmail(); });
+    });
+  }
+
+  function carregar() {
+    raiz.innerHTML = '<p class="frete-nota">Carregando…</p>';
+    chamar('GET')
+      .then(telaPedidos)
+      .catch(function (e) {
+        if (e.status === 401) { telaEmail(); return; }
+        raiz.innerHTML = '<div class="frete-aviso" role="alert"><b>Não foi possível abrir sua conta agora.</b><p>' + esc(e.message) + '</p></div>';
+      });
+  }
+
+  carregar();
+});
+</script>
+<script src="assets/js/animations.js"></script>
+</body>
+</html>

@@ -96,7 +96,8 @@
     raio:       '<path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/>',
     regua:      '<rect x="2.5" y="8.5" width="19" height="7" rx="1.5"/><path d="M7 8.5v3M11 8.5v4M15 8.5v3M19 8.5v4"/>',
     loja:       '<path d="M4 9h16v11H4zM3 9l1.6-5h14.8L21 9"/><path d="M9 20v-6h6v6"/>',
-    doc:        '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>'
+    doc:        '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+    usuario:    '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
   };
 
   /* Marcas de terceiros são símbolos sólidos do sprite; o resto são os
@@ -212,6 +213,7 @@
       '</div>' +
 
       '<div class="head-actions">' +
+        '<a class="btn-icon" href="conta.html" aria-label="Minha conta" title="Minha conta">' + VM.icon('usuario') + '</a>' +
         '<button class="btn-icon cart-btn" id="abrir-carrinho" aria-label="Abrir carrinho">' +
           VM.icon('carrinho') +
           '<span class="cart-btn__count" data-cart-count data-count="0">0</span>' +

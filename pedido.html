@@ -73,7 +73,7 @@
 <script src="assets/js/sprite.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/app.js?v=20261013d"></script>
 <script src="assets/js/cart.js?v=20261013b"></script>
 <script>
 document.addEventListener('vm:ready', function () {
@@ -231,7 +231,8 @@ document.addEventListener('vm:ready', function () {
     return '<div class="checkout-layout"><div class="panel stack-6">' +
       '<h3>Acompanhe seu pedido</h3>' +
       '<ol class="andamento">' + lista + '</ol>' +
-      '<p class="muted" style="font-size:14px;margin:0">Dúvidas sobre a entrega? <a href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Fale com a loja</a>.</p>' +
+      '<p class="muted" style="font-size:14px;margin:0">Dúvidas sobre a entrega? <a href="' + VM.EMPRESA.whatsapp + '" target="_blank" rel="noopener">Fale com a loja</a>. ' +
+        'Todos os seus pedidos ficam em <a href="conta.html">Minha conta</a>.</p>' +
       '</div>' + resumo(p) + '</div>';
   }
 

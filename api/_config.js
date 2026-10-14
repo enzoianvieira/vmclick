@@ -147,6 +147,30 @@ async function melhorEnvio() {
   return { ambiente, token: token || null, origemToken: token ? 'painel' : null };
 }
 
+/* ------------------------------------------------------------- E-mail --- */
+
+/* Resend: uma chave só (não tem sandbox) e o remetente, que precisa ser de
+   um domínio verificado lá. Painel primeiro, depois as variáveis. */
+async function email() {
+  const p = (await lerBruto('email')) || {};
+  const chavePainel = decifrar(p.chave);
+  return {
+    chave: chavePainel || process.env.RESEND_API_KEY || null,
+    remetente: p.remetente || process.env.EMAIL_REMETENTE || null,
+    origemChave: chavePainel ? 'painel' : (process.env.RESEND_API_KEY ? 'ambiente' : null),
+  };
+}
+
+function definirEmail({ chave, remetente }) {
+  return alterar('email', (c) => {
+    if (chave !== undefined) {
+      if (chave) { c.chave = cifrar(chave); c.em = new Date().toISOString(); } else { delete c.chave; delete c.em; }
+    }
+    if (remetente !== undefined) c.remetente = remetente || undefined;
+    return c;
+  });
+}
+
 /* ------------------------------------------------------- painel: status --- */
 
 /** O que o painel pode ver: ambiente, se há chave e o final dela. */
@@ -155,6 +179,8 @@ async function resumo() {
   const m = (await lerBruto('melhorenvio')) || {};
   const atualAsaas = await asaas();
   const atualME = await melhorEnvio();
+  const e = (await lerBruto('email')) || {};
+  const atualEmail = await email();
 
   const porAmbiente = (bruto, campo) => {
     const r = {};
@@ -185,6 +211,13 @@ async function resumo() {
       oauth: Boolean(process.env.MELHORENVIO_CLIENT_ID && process.env.MELHORENVIO_REFRESH_TOKEN),
       ambienteOauth: process.env.MELHORENVIO_AMBIENTE === 'producao' ? 'producao' : 'sandbox',
       tokens: porAmbiente(m, 'token'),
+    },
+    email: {
+      configurada: Boolean(decifrar(e.chave)),
+      final: mascarar(decifrar(e.chave)),
+      em: e.em || null,
+      origemChave: atualEmail.origemChave,
+      remetente: atualEmail.remetente,
     },
   };
 }
@@ -240,6 +273,6 @@ function definirWebhook(ambiente, { id, token }) {
 
 module.exports = {
   AMBIENTES,
-  asaas, melhorEnvio, resumo, chaveAsaas, tokenMelhorEnvio,
-  definirAmbiente, definirSegredo, definirWebhook,
+  asaas, melhorEnvio, email, resumo, chaveAsaas, tokenMelhorEnvio,
+  definirAmbiente, definirSegredo, definirWebhook, definirEmail,
 };

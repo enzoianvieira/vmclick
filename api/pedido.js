@@ -22,6 +22,7 @@ const asaas = require('./_asaas.js');
 const pedidos = require('./_pedido.js');
 const armazem = require('./_armazem.js');
 const config = require('./_config.js');
+const email = require('./_email.js');
 const { opcoesDeEntrega, catalogo, OPCAO_RETIRADA, ErroFrete } = require('./_frete.js');
 
 const { ErroPagamento } = asaas;
@@ -384,11 +385,15 @@ async function criar(req, res) {
     throw e;
   }
 
-  /* Cartão aprovado já volta pago na mesma chamada. */
+  /* Cartão aprovado já volta pago na mesma chamada (e o e-mail de pagamento
+     confirmado sai de mudarStatus). Pix e boleto: e-mail com o link para
+     pagar, para quem fechar a aba antes. */
   let status = pedido.status;
   if (cobranca.pago) {
     const pago = await pedidos.mudarStatus(pedido.id, 'pago', 'checkout');
     if (pago) status = pago.status;
+  } else if (forma === 'pix' || forma === 'boleto') {
+    await email.pedidoRecebido(pedido);
   }
 
   return res.status(201).json({ id: pedido.id, numero: pedido.numero, forma, total, status });

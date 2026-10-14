@@ -19,6 +19,7 @@ const { protegido } = require('./_sessao.js');
 const config = require('./_config.js');
 const asaas = require('./_asaas.js');
 const { testarConexao, ErroFrete } = require('./_frete.js');
+const email = require('./_email.js');
 
 const ROTULO = { sandbox: 'teste', producao: 'produção' };
 
@@ -186,6 +187,55 @@ async function acaoMelhorEnvio(acao, ambiente, valor) {
   throw new ErroPainel(400, 'Ação desconhecida');
 }
 
+/* E-mail (Resend): chave, remetente e envio de teste. Sem ambientes. */
+async function acaoEmail(acao, valor) {
+  valor = valor || {};
+  const atual = await config.email();
+
+  if (acao === 'salvar') {
+    const chave = valor.chave !== undefined ? String(valor.chave || '').trim() : undefined;
+    const remetente = String(valor.remetente || '').trim();
+    if (!/^[^<>]*<?[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>?$/.test(remetente)) {
+      throw new ErroPainel(400, 'Remetente inválido. Ex.: VM Click <pedidos@vmclick.com.br>');
+    }
+    if (chave !== undefined && chave && !/^re_[A-Za-z0-9_]+$/.test(chave)) {
+      throw new ErroPainel(400, 'A chave do Resend começa com re_. Copie a chave inteira.');
+    }
+    const testar = chave || atual.chave;
+    if (!testar) throw new ErroPainel(400, 'Cole a chave do Resend.');
+    let r;
+    try { r = await email.testar(testar, remetente); } catch (e) { throw new ErroPainel(400, e.message); }
+    await config.definirEmail({ chave: chave || undefined, remetente });
+    if (!r.cadastrado) return `Chave salva. ATENÇÃO: o domínio ${r.dominio} não está cadastrado no Resend - cadastre e verifique o domínio, senão os e-mails só chegam ao dono da conta.`;
+    if (!r.verificado) return `Chave salva. O domínio ${r.dominio} ainda não foi verificado no Resend (confira os registros DNS).`;
+    return `E-mail configurado. Domínio ${r.dominio} verificado.`;
+  }
+
+  if (acao === 'teste') {
+    const para = String(valor.para || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(para)) throw new ErroPainel(400, 'Informe um e-mail para receber o teste.');
+    try {
+      await email.enviar({
+        para,
+        assunto: 'Teste de e-mail - VM Click',
+        html: '<p>Se você recebeu esta mensagem, os e-mails do site estão funcionando.</p>',
+        texto: 'Se você recebeu esta mensagem, os e-mails do site estão funcionando.',
+        lancar: true,
+      });
+    } catch (e) {
+      throw new ErroPainel(400, e.message);
+    }
+    return `E-mail de teste enviado para ${para}. Confira a caixa de entrada (e o spam).`;
+  }
+
+  if (acao === 'remover') {
+    await config.definirEmail({ chave: '' });
+    return 'Chave do Resend removida.';
+  }
+
+  throw new ErroPainel(400, 'Ação desconhecida');
+}
+
 /* -------------------------------------------------------------- handler --- */
 
 module.exports = protegido(async (req, res) => {
@@ -203,9 +253,15 @@ module.exports = protegido(async (req, res) => {
     }
 
     const { integracao, acao, ambiente, valor } = lerCorpo(req);
-    if (!config.AMBIENTES.includes(ambiente)) throw new ErroPainel(400, 'Ambiente inválido');
 
     let mensagem;
+    if (integracao === 'email') {
+      mensagem = await acaoEmail(acao, valor);
+      console.log(`[integracoes] ${req.sessao.u}: email ${acao}`);
+      return res.status(200).json({ ok: true, mensagem, situacao: await config.resumo() });
+    }
+    if (!config.AMBIENTES.includes(ambiente)) throw new ErroPainel(400, 'Ambiente inválido');
+
     if (integracao === 'asaas') mensagem = await acaoAsaas(acao, ambiente, valor, req);
     else if (integracao === 'melhorenvio') mensagem = await acaoMelhorEnvio(acao, ambiente, valor);
     else throw new ErroPainel(400, 'Integração desconhecida');

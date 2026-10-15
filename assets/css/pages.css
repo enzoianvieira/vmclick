@@ -903,6 +903,7 @@
 }
 .frete-info svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
 .frete-info p { margin: 0; font-size: 13px; line-height: 1.5; }
+.frete-info--topo { margin: 0 0 12px; }
 
 /* esqueleto enquanto a cotação não volta */
 .frete-op--esqueleto { cursor: default; }

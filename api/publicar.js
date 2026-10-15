@@ -6,7 +6,8 @@
  * site sozinha. Nenhum download, nenhum comando de terminal.
  *
  * Corpo:
- *   { tipo: 'produtos', skus: [...], destaques: [...], ofertas: [...] }
+ *   { tipo: 'produtos', skus: [...], destaques: [...], ofertas: [...],
+ *     entrega: { prazoPadrao: 3, produtos: { sku: { prazo } | { gratis: false } } } }
  *   { tipo: 'banners',  banners: [...] }
  *   { tipo: 'blog',     posts: [...] }
  *
@@ -27,6 +28,18 @@ async function publicarProdutos(dados) {
   if (!skus.length) throw new gh.ErroGitHub(400, 'Nenhum produto selecionado.');
   if (skus.length > MAX_PRODUTOS) {
     throw new gh.ErroGitHub(400, `São ${skus.length} produtos. O limite por publicação é ${MAX_PRODUTOS}.`);
+  }
+
+  /* Validada antes de ir ao Olist: regra inválida não pode custar a espera
+     da busca inteira para só então ser recusada. Painel antigo em cache não
+     manda `entrega` - aí o arquivo atual fica como está. */
+  let entrega = null;
+  if (dados.entrega !== undefined) {
+    try {
+      entrega = cat.normalizarEntrega(dados.entrega, skus);
+    } catch (e) {
+      throw new gh.ErroGitHub(400, e.message);
+    }
   }
 
   /* Busca o detalhe de cada SKU no Olist. É isto que dispensa o antigo
@@ -75,6 +88,10 @@ async function publicarProdutos(dados) {
     destaques: dados.destaques || [],
     ofertas: dados.ofertas || [],
   }), 'conteudo: atualiza destaques e ofertas da home'));
+  if (entrega) {
+    gravados.push(await gh.gravar('data/entrega.js', cat.gerarEntregaJs(entrega),
+      'conteudo: atualiza prazos da entrega gratis em Curitiba'));
+  }
 
   return {
     publicados: produtos.length,

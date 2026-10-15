@@ -71,6 +71,27 @@
 
   Frete.limpar = function () { Frete.escolher(null); };
 
+  /* --------------------------------------------------- entrega grátis ---- */
+
+  /* Prazo da entrega grátis em Curitiba, definido no painel (data/entrega.js).
+     Só para texto: quem decide o que vale no pedido é o servidor. Sem o
+     arquivo carregado, o padrão combinado: 3 dias úteis, todos dentro. */
+  Frete.prazoGratis = function (sku) {
+    var e = window.VM_ENTREGA || {};
+    var padrao = parseInt(e.prazoPadrao, 10) > 0 ? parseInt(e.prazoPadrao, 10) : 3;
+    var regra = (sku && e.produtos && e.produtos[sku]) || {};
+    if (regra.gratis === false) return { gratis: false, prazo: null };
+    return { gratis: true, prazo: parseInt(regra.prazo, 10) > 0 ? parseInt(regra.prazo, 10) : padrao };
+  };
+
+  /* Textos estáticos marcados com data-prazo-gratis ("3 dias úteis"). */
+  function preencherPrazos() {
+    var p = Frete.prazoGratis().prazo;
+    document.querySelectorAll('[data-prazo-gratis]').forEach(function (el) { el.textContent = diasUteis(p); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', preencherPrazos);
+  else preencherPrazos();
+
   /* --------------------------------------------------------------- cotação */
 
   Frete.formatarCep = function (v) {
@@ -294,21 +315,23 @@
     }
     entregas.sort(function (a, b) { return a.preco - b.preco; });
 
+    var fora = dados.foraDaEntregaGratis && dados.foraDaEntregaGratis.length
+      ? '<div class="frete-info frete-info--topo">' + window.VM.icon('info') + '<p>Entrega grátis em Curitiba indisponível para este pedido: ' +
+          esc(dados.foraDaEntregaGratis.join(', ')) + (dados.foraDaEntregaGratis.length > 1 ? ' não entram' : ' não entra') +
+          ' na entrega da loja.</p></div>'
+      : '';
+
     el.innerHTML =
       topo +
       (entregas.length || rapida
         ? '<h4 class="frete-grupo">Receber em casa</h4>' +
-          (dados.freteGratis && dados.freteGratis.falta > 0 ? barraGratis(dados.freteGratis) : '') +
+          (dados.freteGratis && dados.freteGratis.falta > 0 ? barraGratis(dados.freteGratis) : '') + fora +
           '<div class="frete-lista">' +
           entregas.map(function (o) { return linhaOpcao(o, atual, ctx, selos); }).join('') + rapida + '</div>'
         : '') +
       (retiradas.length
         ? '<h4 class="frete-grupo">' + (entregas.length ? 'Ou retire na loja' : 'Retire na loja') + '</h4><div class="frete-lista">' +
           retiradas.map(function (o) { return linhaOpcao(o, atual, ctx, selos); }).join('') + '</div>'
-        : '') +
-      (dados.pesoEstimado
-        ? '<div class="frete-info">' + window.VM.icon('info') +
-          '<p>Alguns itens estão com medida estimada. O frete é conferido pela loja antes do envio.</p></div>'
         : '');
 
     var link = el.querySelector('.frete-op--link');

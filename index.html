@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261015a">
 <script>document.documentElement.classList.add('js-anim');</script>
 </head>
 <body>
@@ -213,6 +213,7 @@
 <footer class="site-footer" id="site-footer"></footer>
 
 <script src="data/produtos.js"></script>
+<script src="data/entrega.js"></script>
 <script src="data/marcas.js" onerror="window.VM_MARCAS=[]"></script>
 <script src="data/curadoria.js" onerror="window.VM_CURADORIA=null"></script>
 <script src="data/banners.js" onerror="window.VM_BANNERS=[]"></script>
@@ -221,13 +222,18 @@
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js?v=20261013d"></script>
 <script src="assets/js/cart.js?v=20261013b"></script>
-<script src="assets/js/frete.js"></script>
-<script src="assets/js/catalog.js?v=20261013b"></script>
+<script src="assets/js/frete.js?v=20261015a"></script>
+<script src="assets/js/catalog.js?v=20261015a"></script>
 <script>
 document.addEventListener('vm:ready', function () {
+  function prazoGratis() {
+    var n = window.VMFrete && VMFrete.prazoGratis ? VMFrete.prazoGratis().prazo : 3;
+    return n + (n === 1 ? ' dia útil' : ' dias úteis');
+  }
+
   /* faixa de confiança */
   var itens = [
-    { i: 'caminhao',  k: 'Entrega em Curitiba',    v: 'Região metropolitana em 1 a 3 dias úteis' },
+    { i: 'caminhao',  k: 'Entrega grátis em Curitiba', v: 'Acima de ' + VM.money(VMCart.FRETE_GRATIS) + ' em até ' + prazoGratis() },
     { i: 'loja',      k: 'Retirada na loja',       v: 'Portão · pronta a partir de 2 horas' },
     { i: 'atendente', k: 'Atendimento técnico',    v: 'Ajuda no dimensionamento antes da compra' },
     { i: 'escudo',    k: 'Nota fiscal e garantia', v: 'Produtos certificados e com procedência' }

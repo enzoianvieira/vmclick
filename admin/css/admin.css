@@ -92,6 +92,25 @@ body.admin {
   font-variant-numeric: tabular-nums;
 }
 
+/* ------------------------------------------------------ ENTREGA GRÁTIS --- */
+.entrega-cfg {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-4);
+}
+.entrega-cfg__texto { flex: 1 1 420px; }
+.entrega-cfg__texto .cartao__titulo { margin-bottom: var(--sp-2); }
+.entrega-cfg__texto p { margin: 0; font-size: 13.5px; color: var(--text-muted); max-width: 70ch; }
+.entrega-cfg__campo { flex: 0 0 auto; }
+.entrega-cfg__entrada { display: flex; align-items: center; gap: var(--sp-2); font-size: 13.5px; color: var(--text-muted); white-space: nowrap; }
+.entrega-cfg__entrada input { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+table.dados select.entrega-sel {
+  padding: 5px 8px; font: inherit; font-size: 13px; border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--n-0); color: var(--text); max-width: 170px;
+}
+table.dados select.entrega-sel.is-fora { color: var(--danger); border-color: var(--danger); }
+table.dados select.entrega-sel.is-proprio { color: var(--teal-800); border-color: var(--teal-500); font-weight: var(--fw-semibold); }
+table.dados select.entrega-sel:focus { outline: none; border-color: var(--teal-500); box-shadow: var(--sh-focus); }
+
 /* --------------------------------------------------------------- TABELA --- */
 .tab-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--n-0); }
 table.dados { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 700px; }

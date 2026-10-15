@@ -21,6 +21,10 @@
   /* ====================================================================== */
 
   var catalogo = window.VM_PRODUTOS || [];
+
+  /* Mesmos limites do servidor (api/_catalogo.js). */
+  var PRAZO_MIN = 1;
+  var PRAZO_MAX = 30;
   var estado = carregar();
 
   function padrao() {
@@ -29,10 +33,21 @@
       skus: catalogo.map(function (p) { return p.sku; }),
       destaques: (cur.destaques || []).slice(),
       ofertas: (cur.ofertas || []).map(function (o) { return { sku: o.sku, precoDe: o.precoDe }; }),
+      entrega: entregaPublicada(),
       /* produtos trazidos do Olist nesta sessão e ainda não sincronizados */
       novos: [],
       banners: (window.VM_BANNERS || []).map(function (b) { return Object.assign({}, b); }),
       posts: (window.VM_POSTS || []).map(function (p) { return Object.assign({}, p); }),
+    };
+  }
+
+  /* Regras da entrega grátis em Curitiba, como estão no ar (data/entrega.js). */
+  function entregaPublicada() {
+    var e = window.VM_ENTREGA || {};
+    var prazo = parseInt(e.prazoPadrao, 10);
+    return {
+      prazoPadrao: prazo >= PRAZO_MIN && prazo <= PRAZO_MAX ? prazo : 3,
+      produtos: JSON.parse(JSON.stringify(e.produtos || {})),
     };
   }
 
@@ -133,12 +148,33 @@
     return Boolean(peso) && temMedida;
   }
 
+  function diasUteis(n) { return n + (n === 1 ? ' dia útil' : ' dias úteis'); }
+
+  /* Uma escolha só por produto: segue o padrão, prazo próprio ou fora. */
+  function seletorEntrega(sku) {
+    var regra = estado.entrega.produtos[sku] || {};
+    var atual = regra.gratis === false ? 'fora' : (regra.prazo ? String(regra.prazo) : '');
+    var classe = atual === 'fora' ? ' is-fora' : (atual ? ' is-proprio' : '');
+    var opcoes = '<option value="">Padrão · ' + diasUteis(estado.entrega.prazoPadrao) + '</option>';
+    for (var n = PRAZO_MIN; n <= 15; n++) {
+      if (n === estado.entrega.prazoPadrao) continue;
+      opcoes += '<option value="' + n + '"' + (atual === String(n) ? ' selected' : '') + '>' + diasUteis(n) + '</option>';
+    }
+    /* prazo próprio acima de 15, digitado antes, não pode sumir da lista */
+    if (regra.prazo > 15) {
+      opcoes += '<option value="' + regra.prazo + '" selected>' + diasUteis(regra.prazo) + '</option>';
+    }
+    opcoes += '<option value="fora"' + (atual === 'fora' ? ' selected' : '') + '>Sem entrega grátis</option>';
+    return '<select class="entrega-sel' + classe + '" data-entrega aria-label="Entrega grátis em Curitiba">' + opcoes + '</select>';
+  }
+
   function renderProdutos() {
     var corpo = $('#lista-produtos');
+    $('#prazo-padrao').value = estado.entrega.prazoPadrao;
     var linhas = estado.skus.map(function (sku) {
       var p = produtoPorSku(sku);
       if (!p) {
-        return '<tr><td colspan="8"><span class="sku">' + esc(sku) + '</span> ' +
+        return '<tr><td colspan="9"><span class="sku">' + esc(sku) + '</span> ' +
                '<span class="selo selo--aviso">aguardando sincronização</span></td></tr>';
       }
       var destaque = estado.destaques.indexOf(sku) > -1;
@@ -153,6 +189,7 @@
         '<td>' + (frete
           ? '<span class="selo selo--ok">ok</span>'
           : '<span class="selo selo--alerta">sem peso</span>') + '</td>' +
+        '<td>' + seletorEntrega(sku) + '</td>' +
         '<td><input type="checkbox" data-destaque' + (destaque ? ' checked' : '') + '></td>' +
         '<td>' + (oferta
           ? '<input type="number" step="0.01" min="0" value="' + oferta.precoDe + '" data-precode style="width:96px">'
@@ -161,7 +198,7 @@
       '</tr>';
     }).join('');
 
-    corpo.innerHTML = linhas || '<tr><td colspan="8"><div class="vazio">Nenhum produto no site. Use “Buscar no Olist” para adicionar.</div></td></tr>';
+    corpo.innerHTML = linhas || '<tr><td colspan="9"><div class="vazio">Nenhum produto no site. Use “Buscar no Olist” para adicionar.</div></td></tr>';
     $('#conta-produtos').textContent = estado.skus.length;
 
     var semFrete = estado.skus.filter(function (s) {
@@ -188,6 +225,7 @@
       estado.skus = estado.skus.filter(function (s) { return s !== sku; });
       estado.destaques = estado.destaques.filter(function (s) { return s !== sku; });
       estado.ofertas = estado.ofertas.filter(function (o) { return o.sku !== sku; });
+      delete estado.entrega.produtos[sku];
       salvar(); renderProdutos();
       aviso('Produto tirado do site. Publique para valer no ar.');
     }
@@ -214,6 +252,15 @@
       salvar();
     }
 
+    if (e.target.matches('[data-entrega]')) {
+      var v = e.target.value;
+      if (v === 'fora') estado.entrega.produtos[sku] = { gratis: false };
+      else if (v) estado.entrega.produtos[sku] = { prazo: parseInt(v, 10) };
+      else delete estado.entrega.produtos[sku];
+      e.target.className = 'entrega-sel' + (v === 'fora' ? ' is-fora' : (v ? ' is-proprio' : ''));
+      salvar();
+    }
+
     if (e.target.matches('[data-precode]')) {
       var valor = parseFloat(e.target.value);
       var p = produtoPorSku(sku);
@@ -230,6 +277,22 @@
       oferta.precoDe = valor;
       salvar();
     }
+  });
+
+  $('#prazo-padrao').addEventListener('change', function (e) {
+    var n = Number(e.target.value);
+    if (!Number.isInteger(n) || n < PRAZO_MIN || n > PRAZO_MAX) {
+      aviso('O prazo padrão precisa ser um número inteiro de ' + PRAZO_MIN + ' a ' + PRAZO_MAX + ' dias úteis.', true);
+      e.target.value = estado.entrega.prazoPadrao;
+      return;
+    }
+    estado.entrega.prazoPadrao = n;
+    /* prazo próprio igual ao novo padrão deixa de ser exceção */
+    Object.keys(estado.entrega.produtos).forEach(function (sku) {
+      if (estado.entrega.produtos[sku].prazo === n) delete estado.entrega.produtos[sku];
+    });
+    salvar(); renderProdutos();
+    aviso('Prazo padrão: ' + diasUteis(n) + '. Publique para valer no site.');
   });
 
   /* ---- buscar no Olist ---- */
@@ -1165,7 +1228,7 @@
 
   function cargaDe(tipo) {
     if (tipo === 'produtos') {
-      return { tipo: tipo, skus: estado.skus, destaques: estado.destaques, ofertas: estado.ofertas };
+      return { tipo: tipo, skus: estado.skus, destaques: estado.destaques, ofertas: estado.ofertas, entrega: estado.entrega };
     }
     if (tipo === 'banners') return { tipo: tipo, banners: estado.banners };
     return { tipo: tipo, posts: estado.posts };

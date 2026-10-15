@@ -100,10 +100,25 @@ Definidas pela VM Click em outubro de 2026:
 |---|---|
 | Qualquer CEP | Transportadoras cotadas no Melhor Envio, com preço e data prevista |
 | Qualquer CEP | Retirar na loja (Portão) — grátis, pronto em 2 horas |
-| Curitiba (`FRETE_CEP_GRATIS`) e pedido a partir de `FRETE_GRATIS_ACIMA` (R$ 500) | Entrega grátis VM Click em até `FRETE_PRAZO_LOJA` (3) dias úteis — as transportadoras pagas continuam na lista |
+| Curitiba (`FRETE_CEP_GRATIS`) e pedido a partir de `FRETE_GRATIS_ACIMA` (R$ 500) | Entrega grátis VM Click no prazo do painel (padrão 3 dias úteis) — as transportadoras pagas continuam na lista |
 | Curitiba abaixo de R$ 500 | Barra "faltam R$ X para entrega grátis" |
+| Curitiba com item fora da entrega grátis | Aviso dizendo qual item; só transportadoras e retirada |
 | Curitiba e região (`FRETE_CEP_LOCAL`) | "Precisa em até 24 horas?" — abre o WhatsApp com CEP, endereço e itens; a loja cota ali |
 | Nenhuma transportadora atende, ou pedido grande demais | Orçamento pelo WhatsApp |
+
+### Prazo e produtos da entrega grátis
+
+Escolhidos no painel, aba Produtos, e gravados em `data/entrega.js` ao
+publicar:
+
+- **Prazo padrão** (1 a 30 dias úteis, começa em 3): vale para todo produto
+  sem regra própria.
+- **Por produto**: prazo próprio (ex.: item sob encomenda em 7 dias) ou
+  "Sem entrega grátis" (ex.: item que a loja não leva no carro).
+
+No carrinho vale o prazo do item mais demorado. Basta um item "sem entrega
+grátis" para a opção sair daquele pedido: a loja entrega o pedido inteiro de
+uma vez. Arquivo ausente ou ilegível cai no padrão (3 dias, todos dentro).
 
 A entrega própria **paga** (R$ 24,90) deixou de existir. A entrega em até 24h
 não é calculada no site (R$ 7/km com mínimo de R$ 20, feita por motoboy ou

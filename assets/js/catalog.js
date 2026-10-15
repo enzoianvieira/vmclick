@@ -558,6 +558,14 @@
       'Dúvida de aplicação ou compatibilidade, fale com o atendimento técnico.</p>';
   }
 
+  /* Regra da entrega grátis em Curitiba para este produto (painel). */
+  function textoEntregaGratis(p) {
+    var r = window.VMFrete && VMFrete.prazoGratis ? VMFrete.prazoGratis(p.sku) : { gratis: true, prazo: 3 };
+    if (!r.gratis) return 'Este item não entra na entrega grátis da loja em Curitiba. ';
+    return 'Entrega grátis em Curitiba em até ' + r.prazo + (r.prazo === 1 ? ' dia útil' : ' dias úteis') +
+      ' para pedidos a partir de ' + VM.money(window.VMCart.FRETE_GRATIS) + '. ';
+  }
+
   function descricaoHTML(p) {
     var txt = (p.desc || '').trim();
 
@@ -770,7 +778,7 @@
           '</tbody></table></div></div>' +
         '<div class="tabpanel" id="tab-ent" role="tabpanel" aria-labelledby="t-ent" hidden>' +
           '<p class="muted">Envio para todo o Brasil por transportadora, com valor e prazo calculados pelo CEP. ' +
-          'Entrega grátis em Curitiba em até 3 dias úteis para pedidos a partir de ' + VM.money(window.VMCart.FRETE_GRATIS) + '. ' +
+          textoEntregaGratis(p) +
           'Precisa em até 24 horas? Fale com a loja pelo WhatsApp. ' +
           'Retirada na loja sem custo, disponível a partir de 2 horas após a confirmação. ' +
           'Trocas e devoluções em até 7 dias corridos após o recebimento, conforme o Código de Defesa do Consumidor.</p></div>' +

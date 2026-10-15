@@ -4,8 +4,8 @@
  * Corpo: { "cep": "01001-000", "itens": [{ "sku": "LDS789...", "qtd": 2 }] }
  *
  * Devolve as modalidades de entrega para aquele CEP: retirada na loja, entrega
- * própria quando o CEP é de Curitiba ou região, e as transportadoras cotadas
- * no Melhor Envio.
+ * grátis da loja quando vale (Curitiba, a partir de R$ 500) e as
+ * transportadoras cotadas no Melhor Envio.
  *
  * Endpoint público, sem sessão - é o que o visitante usa antes de comprar. Por
  * isso o carrinho chega só como SKU e quantidade: preço, peso e medidas são

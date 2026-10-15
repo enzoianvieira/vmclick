@@ -51,17 +51,20 @@ class ErroFrete extends Error {
    window de mentira, em vez de duplicar os dados num JSON à parte: assim o
    frete nunca fica defasado em relação ao que a loja mostra. O arquivo entra
    no pacote da função pelo includeFiles do vercel.json. */
+function lerDados(nome) {
+  const arquivo = path.join(__dirname, '..', 'data', nome);
+  const contexto = { window: {} };
+  vm.runInNewContext(fs.readFileSync(arquivo, 'utf8'), contexto, { timeout: 5000 });
+  return contexto.window;
+}
+
 let catalogoCache = null;
 
 function catalogo() {
   if (catalogoCache) return catalogoCache;
 
-  const arquivo = path.join(__dirname, '..', 'data', 'produtos.js');
-  const contexto = { window: {} };
-  vm.runInNewContext(fs.readFileSync(arquivo, 'utf8'), contexto, { timeout: 5000 });
-
   catalogoCache = new Map();
-  for (const p of contexto.window.VM_PRODUTOS || []) {
+  for (const p of lerDados('produtos.js').VM_PRODUTOS || []) {
     if (p && p.sku) catalogoCache.set(String(p.sku), p);
   }
   return catalogoCache;
@@ -375,13 +378,55 @@ async function cotar(cepDestino, itens) {
 
 /* Regras de entrega da VM Click (out/2026):
    - transportadoras para qualquer CEP, com o preço e o prazo de cada uma;
-   - entrega grátis pela loja só em Curitiba e a partir de R$ 500, em até 3
-     dias úteis - quem se encaixa ainda vê as transportadoras pagas;
+   - entrega grátis pela loja só em Curitiba e a partir de R$ 500 - quem se
+     encaixa ainda vê as transportadoras pagas;
+   - o prazo dela e quais produtos entram são escolhidos no painel
+     (data/entrega.js): prazo padrão, prazo próprio por produto ou produto
+     fora da entrega grátis;
    - entrega em até 24h não é cotada aqui: o cliente pede pelo WhatsApp;
    - pedido grande demais para transportadora: orçamento pelo WhatsApp.
    A entrega própria paga (R$ 24,90) deixou de existir. */
 const FRETE_GRATIS_ACIMA = Number(process.env.FRETE_GRATIS_ACIMA || 500);
-const PRAZO_ENTREGA_LOJA = Number(process.env.FRETE_PRAZO_LOJA || 3);
+const PRAZO_ENTREGA_LOJA = 3;
+
+let entregaCache = null;
+
+/* Arquivo ausente ou quebrado não pode derrubar a cotação: cai no padrão
+   de 3 dias úteis com todos os produtos dentro, a regra combinada. */
+function regrasEntrega() {
+  if (entregaCache) return entregaCache;
+  let e = null;
+  try { e = lerDados('entrega.js').VM_ENTREGA; } catch (err) {
+    console.error('[frete] data/entrega.js ilegível, usando o padrão:', err.message);
+  }
+  const prazo = Number(e && e.prazoPadrao);
+  entregaCache = {
+    prazoPadrao: Number.isInteger(prazo) && prazo > 0 ? prazo : PRAZO_ENTREGA_LOJA,
+    produtos: (e && e.produtos) || {},
+  };
+  return entregaCache;
+}
+
+/**
+ * Entrega grátis para estes itens: vale só se todos entram nela (a loja leva
+ * o pedido inteiro de uma vez), e o prazo é o do item mais demorado.
+ */
+function entregaGratisDos(itens) {
+  const r = regrasEntrega();
+  const cat = catalogo();
+  const fora = [];
+  let prazo = 0;
+  for (const item of itens) {
+    const regra = r.produtos[String(item.sku)] || {};
+    if (regra.gratis === false) {
+      const p = cat.get(String(item.sku));
+      fora.push((p && p.nome) || String(item.sku));
+      continue;
+    }
+    prazo = Math.max(prazo, Number(regra.prazo) || r.prazoPadrao);
+  }
+  return { elegivel: !fora.length, prazo: prazo || r.prazoPadrao, fora };
+}
 
 /* Retirada não depende de cotação: vale mesmo com o Melhor Envio fora do ar. */
 const OPCAO_RETIRADA = Object.freeze({
@@ -405,7 +450,8 @@ async function opcoesDeEntrega(cep, itens, subtotal) {
   const r = await cotar(cep, itens);
   const destino = apenasDigitos(cep);
   const curitiba = dentro(destino, CEPS_GRATIS);
-  const gratis = curitiba && Number(subtotal) >= FRETE_GRATIS_ACIMA;
+  const loja = entregaGratisDos(itens);
+  const gratis = curitiba && loja.elegivel && Number(subtotal) >= FRETE_GRATIS_ACIMA;
 
   const opcoes = [{ ...OPCAO_RETIRADA }];
 
@@ -416,8 +462,8 @@ async function opcoesDeEntrega(cep, itens, subtotal) {
       transportadora: 'VM Click',
       servico: 'Entrega grátis VM Click - Curitiba',
       preco: 0,
-      prazo: PRAZO_ENTREGA_LOJA,
-      detalhe: `Em até ${PRAZO_ENTREGA_LOJA} dias úteis`,
+      prazo: loja.prazo,
+      detalhe: `Em até ${loja.prazo} ${loja.prazo === 1 ? 'dia útil' : 'dias úteis'}`,
     });
   }
 
@@ -444,9 +490,12 @@ async function opcoesDeEntrega(cep, itens, subtotal) {
     /* CEP onde a loja entrega em até 24h: a tela oferece cotar pelo WhatsApp */
     entregaRapida: r.local,
     /* Curitiba abaixo do piso: quanto falta para a entrega grátis */
-    freteGratis: curitiba && !gratis
+    freteGratis: curitiba && loja.elegivel && !gratis
       ? { acima: FRETE_GRATIS_ACIMA, falta: Math.round((FRETE_GRATIS_ACIMA - Number(subtotal || 0)) * 100) / 100 }
       : null,
+    /* Curitiba, mas há item fora da entrega grátis: a tela diz qual, em vez
+       de a opção sumir sem explicação. */
+    foraDaEntregaGratis: curitiba && !loja.elegivel ? loja.fora : null,
     pesoEstimado: r.estimado,
   };
 }

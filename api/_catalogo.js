@@ -227,6 +227,46 @@ window.VM_CURADORIA = ${JSON.stringify(curadoria, null, 2)};
 `;
 }
 
+/* Limites da entrega grátis da loja. Prazo acima disso já não é "entrega
+   rápida da loja" e vira erro de digitação mais provável que regra. */
+const PRAZO_ENTREGA_MIN = 1;
+const PRAZO_ENTREGA_MAX = 30;
+
+function prazoValido(n) {
+  return Number.isInteger(n) && n >= PRAZO_ENTREGA_MIN && n <= PRAZO_ENTREGA_MAX;
+}
+
+/**
+ * Valida e normaliza as regras de entrega vindas do painel. Só aceita SKU
+ * publicado: regra de produto que saiu do site é lixo e é descartada.
+ */
+function normalizarEntrega(bruto, skus) {
+  const b = bruto && typeof bruto === 'object' ? bruto : {};
+  const prazoPadrao = Number(b.prazoPadrao);
+  if (!prazoValido(prazoPadrao)) {
+    throw new RangeError(`Prazo padrão da entrega grátis precisa ser de ${PRAZO_ENTREGA_MIN} a ${PRAZO_ENTREGA_MAX} dias úteis.`);
+  }
+
+  const publicados = new Set(skus);
+  const produtos = {};
+  for (const [sku, regra] of Object.entries(b.produtos || {})) {
+    if (!publicados.has(sku) || !regra || typeof regra !== 'object') continue;
+    if (regra.gratis === false) { produtos[sku] = { gratis: false }; continue; }
+    const prazo = Number(regra.prazo);
+    if (prazoValido(prazo) && prazo !== prazoPadrao) produtos[sku] = { prazo };
+  }
+  return { prazoPadrao, produtos };
+}
+
+function gerarEntregaJs(entrega) {
+  return `/* Entrega grátis da loja em Curitiba. Gerado pelo painel em ${agora()}.
+   prazoPadrao = dias úteis para todo produto sem regra própria
+   produtos    = exceções por SKU: { prazo: n } ou { gratis: false } */
+
+window.VM_ENTREGA = ${JSON.stringify(entrega, null, 2)};
+`;
+}
+
 function gerarBannersJs(banners) {
   return `/* Banners da home. Gerado pelo painel em ${agora()}. */
 
@@ -255,6 +295,8 @@ module.exports = {
   gerarProdutosJs,
   gerarMarcasJs,
   gerarCuradoriaJs,
+  gerarEntregaJs,
+  normalizarEntrega,
   gerarBannersJs,
   gerarBlogJs,
   gerarSkusTxt,

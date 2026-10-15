@@ -2,9 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/frete/cotar.js": {
-      "includeFiles": "data/produtos.js"
+      "includeFiles": "data/{produtos,entrega}.js"
     },
     "api/pedido.js": {
+      "includeFiles": "data/{produtos,entrega}.js"
+    },
+    "api/pedidos-admin.js": {
       "includeFiles": "data/produtos.js"
     }
   },

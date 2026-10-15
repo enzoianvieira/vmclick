@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261015a">
 <script>document.documentElement.classList.add('js-anim');</script>
 </head>
 <body>
@@ -147,8 +147,8 @@
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js?v=20261013d"></script>
 <script src="assets/js/cart.js?v=20261013b"></script>
-<script src="assets/js/frete.js"></script>
-<script src="assets/js/catalog.js?v=20261013b"></script>
+<script src="assets/js/frete.js?v=20261015a"></script>
+<script src="assets/js/catalog.js?v=20261015a"></script>
 <script>
 document.addEventListener('vm:ready', function () {
   var E = VM.EMPRESA;
@@ -174,7 +174,7 @@ document.addEventListener('vm:ready', function () {
   var horarios = [
     { i: 'relogio', k: 'Segunda a sexta', v: '08:00 às 18:00' },
     { i: 'loja',    k: 'Sábado',          v: '08:00 às 13:00' },
-    { i: 'caminhao',k: 'Entregas',        v: 'Curitiba e região metropolitana' },
+    { i: 'caminhao',k: 'Entregas',        v: 'Todo o Brasil por transportadora' },
     { i: 'atendente', k: 'Televendas',    v: 'Atendimento técnico por telefone' }
   ];
   document.getElementById('horarios').innerHTML = horarios.map(function (t) {

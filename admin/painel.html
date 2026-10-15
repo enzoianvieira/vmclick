@@ -70,7 +70,7 @@
   <div class="tela-cab">
     <div>
       <h2>Produtos do site</h2>
-      <p>O cadastro fica no Olist. Aqui você escolhe quais produtos aparecem na loja, quais viram destaque e quais entram em oferta.</p>
+      <p>O cadastro fica no Olist. Aqui você escolhe quais produtos aparecem na loja, quais viram destaque, quais entram em oferta e o prazo da entrega grátis em Curitiba.</p>
     </div>
     <div class="bt-linha">
       <button class="bt bt--linha" type="button" id="abrir-olist">Buscar no Olist</button>
@@ -79,6 +79,22 @@
   </div>
 
   <div class="aviso" id="resumo-produtos"></div>
+
+  <div class="cartao entrega-cfg">
+    <div class="entrega-cfg__texto">
+      <div class="cartao__titulo">Entrega grátis em Curitiba</div>
+      <p>Pedidos a partir de R$ 500 com endereço em Curitiba. O prazo padrão vale para todos os produtos;
+        na coluna <b>Entrega grátis</b> da tabela dá para dar um prazo próprio a um produto ou deixá-lo de fora.
+        No pedido vale o prazo do item mais demorado.</p>
+    </div>
+    <div class="campo entrega-cfg__campo">
+      <label for="prazo-padrao">Prazo padrão</label>
+      <div class="entrega-cfg__entrada">
+        <input id="prazo-padrao" type="number" inputmode="numeric" min="1" max="30" step="1">
+        <span>dias úteis</span>
+      </div>
+    </div>
+  </div>
 
   <div class="cartao">
     <div class="cartao__titulo">No site agora <span class="conta" id="conta-produtos">0</span></div>
@@ -91,6 +107,7 @@
             <th class="num">Preço</th>
             <th class="num">Estoque</th>
             <th>Frete</th>
+            <th>Entrega grátis</th>
             <th>Destaque</th>
             <th>Oferta</th>
             <th></th>
@@ -177,6 +194,7 @@
 
 <script src="/data/produtos.js"></script>
 <script src="/data/curadoria.js" onerror="window.VM_CURADORIA=null"></script>
+<script src="/data/entrega.js" onerror="window.VM_ENTREGA=null"></script>
 <script src="/data/banners.js" onerror="window.VM_BANNERS=[]"></script>
 <script src="/data/blog.js" onerror="window.VM_POSTS=[]"></script>
 <script src="/admin/js/api.js"></script>

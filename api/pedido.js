@@ -115,8 +115,10 @@ function validarCliente(c) {
     doc: digitos(c.doc),
     email: texto(c.email, 120).toLowerCase(),
     tel: digitos(c.tel),
-    pj: Boolean(c.pj),
   };
+  /* Pessoa jurídica é quem compra com CNPJ: deduzido do documento, não de
+     uma caixa que o cliente pode esquecer de marcar (ou marcar com CPF). */
+  cliente.pj = cliente.doc.length === 14;
 
   if (cliente.nome.split(/\s+/).length < 2) throw new ErroPedido(400, 'Informe nome e sobrenome.');
   if (!(cpfValido(cliente.doc) || cnpjValido(cliente.doc))) throw new ErroPedido(400, 'CPF ou CNPJ inválido.');

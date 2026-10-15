@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/base.css">
 <link rel="stylesheet" href="assets/css/components.css">
-<link rel="stylesheet" href="assets/css/pages.css?v=20261013c">
+<link rel="stylesheet" href="assets/css/pages.css?v=20261015a">
 <script>document.documentElement.classList.add('js-anim');</script>
 </head>
 <body class="woocommerce-checkout">
@@ -49,10 +49,10 @@
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/js/app.js?v=20261013d"></script>
 <script src="assets/js/cart.js?v=20261013b"></script>
-<script src="assets/js/frete.js?v=20261013c"></script>
+<script src="assets/js/frete.js?v=20261015a"></script>
 <script src="assets/js/campos.js?v=20261013c"></script>
 <script src="assets/js/cartao.js?v=20261013c"></script>
-<script src="assets/js/catalog.js?v=20261013b"></script>
+<script src="assets/js/catalog.js?v=20261015a"></script>
 <script>
 document.addEventListener('vm:ready', function () {
   var raiz = document.getElementById('checkout');
@@ -76,9 +76,24 @@ document.addEventListener('vm:ready', function () {
   };
 
   /* Os painéis são redesenhados a cada passo; o que a pessoa digitou fica
-     aqui, senão voltar um passo apagaria o formulário. Só em memória: CPF e
-     endereço não ficam gravados no navegador. */
-  var dados = {};
+     aqui, senão voltar um passo apagaria o formulário. Também vai para o
+     sessionStorage: voltar ao carrinho, recarregar ou usar o "voltar" do
+     navegador não pode obrigar a digitar tudo de novo. sessionStorage morre
+     com a aba e é apagado quando o pedido é criado. Cartão nunca entra aqui. */
+  var CHAVE_DADOS = 'vm_checkout_dados_v1';
+  var dados = lerDados();
+
+  function lerDados() {
+    try { return JSON.parse(sessionStorage.getItem(CHAVE_DADOS)) || {}; }
+    catch (e) { return {}; }
+  }
+  function guardarDados() {
+    try { sessionStorage.setItem(CHAVE_DADOS, JSON.stringify(dados)); }
+    catch (e) { /* sessão cheia ou bloqueada: segue só em memória */ }
+  }
+  function apagarDados() {
+    try { sessionStorage.removeItem(CHAVE_DADOS); } catch (e) { /* segue */ }
+  }
 
   /* Regras de pagamento vêm do servidor (formas ativas, desconto do Pix,
      parcelas). Enquanto não chegam, vale o padrão da vitrine. */
@@ -165,7 +180,6 @@ document.addEventListener('vm:ready', function () {
         '<div class="field"><label for="tel">Telefone <span class="req">*</span></label>' +
           '<input id="tel" data-campo="tel" inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(41) 90000-0000" value="' + val('tel') + '"><span class="err">Informe DDD + número.</span></div>' +
       '</div>' +
-      '<label class="filter-opt" style="padding:0"><input type="checkbox" id="pj"' + (dados.pj ? ' checked' : '') + '>Comprar como pessoa jurídica (emitir NF-e para CNPJ)</label>' +
     '</div>';
   }
 
@@ -282,9 +296,8 @@ document.addEventListener('vm:ready', function () {
       var el = document.getElementById(id);
       if (el) dados[id] = el.value.trim();
     });
-    var pj = document.getElementById('pj');
-    if (pj) dados.pj = pj.checked;
     if (dados.uf) dados.uf = dados.uf.toUpperCase();
+    guardarDados();
   }
 
   function render() {
@@ -309,15 +322,17 @@ document.addEventListener('vm:ready', function () {
     var avancar = document.getElementById('avancar');
     var voltar = document.getElementById('voltar');
 
+    /* Voltar do checkout e voltar do navegador são o mesmo gesto: quando o
+       passo anterior está no histórico, o botão só o percorre. */
     if (voltar) voltar.addEventListener('click', function () {
-      coletar(); passo--; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      var noHistorico = history.state && history.state.passoCheckout === passo;
+      if (noHistorico) history.back(); else irPara(passo - 1);
     });
 
     avancar.addEventListener('click', function () {
       if (!validar()) return;
-      coletar();
-      if (passo < 3) { passo++; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else concluir();
+      if (passo < 3) irPara(passo + 1);
+      else { coletar(); concluir(); }
     });
 
     document.querySelectorAll('input[name="pgto"]').forEach(function (r) {
@@ -334,14 +349,15 @@ document.addEventListener('vm:ready', function () {
     });
 
     raiz.querySelectorAll('[data-ir-passo]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        coletar(); passo = Number(b.getAttribute('data-ir-passo')); render();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      b.addEventListener('click', function () { irPara(Number(b.getAttribute('data-ir-passo'))); });
     });
 
     var cep = document.getElementById('cep');
     if (cep) {
+      /* Painel novo, caixa de opções vazia: a cotação precisa ser pintada de
+         novo (VMFrete guarda o resultado por CEP, então não refaz a chamada). */
+      freteCotadoPara = null;
+
       /* CEP completo já busca o endereço; as opções de entrega aparecem
          quando o endereço fica completo (ver atualizarOpcoes). */
       cep.addEventListener('input', function () {
@@ -370,6 +386,42 @@ document.addEventListener('vm:ready', function () {
 
     marcarEnderecoObrigatorio();
   }
+
+  /* Leva a barra de passos para logo abaixo do cabeçalho fixo. Subir para o
+     topo da página escondia o formulário atrás do título e obrigava a rolar. */
+  function subirAoCheckout() {
+    var raizCss = getComputedStyle(document.documentElement);
+    var folga = (parseInt(raizCss.getPropertyValue('--header-h-sticky'), 10) || 64) + 16;
+    var alvo = raiz.getBoundingClientRect().top + window.pageYOffset - folga;
+    var reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: Math.max(0, alvo), behavior: reduzido ? 'auto' : 'smooth' });
+  }
+
+  /* Troca de passo. Cada passo vira uma entrada no histórico, para o
+     "voltar" do navegador recuar um passo em vez de sair do checkout. */
+  function irPara(n, peloHistorico) {
+    coletar();
+    passo = Math.max(1, Math.min(3, n));
+    render();
+    subirAoCheckout();
+    if (!peloHistorico) history.pushState({ passoCheckout: passo }, '');
+  }
+
+  /* Senão o navegador devolve a rolagem que a página tinha naquela entrada
+     do histórico (o topo) e desfaz o subirAoCheckout. */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  window.addEventListener('popstate', function (e) {
+    var n = (e.state && e.state.passoCheckout) || 1;
+    if (n === passo) return;
+    /* "avançar" do navegador não pula a validação do passo atual */
+    if (n > passo && !validar()) { history.replaceState({ passoCheckout: passo }, ''); return; }
+    irPara(n, true);
+  });
+
+  /* Guarda enquanto digita: fechar a aba sem clicar em nada não perde o que
+     foi preenchido. Campos do cartão ficam de fora (coletar não os lê). */
+  raiz.addEventListener('input', function () { coletar(); });
 
   function enderecoPronto() {
     return ['rua', 'numero', 'bairro', 'cidade', 'uf'].every(function (id) { return !invalido(id); });
@@ -614,7 +666,7 @@ document.addEventListener('vm:ready', function () {
 
     var frete = VMFrete.selecionada();
     var corpo = {
-      cliente: { nome: dados.nome, doc: dados.doc, email: dados.email, tel: dados.tel, pj: dados.pj },
+      cliente: { nome: dados.nome, doc: dados.doc, email: dados.email, tel: dados.tel },
       entrega: {
         cep: dados.cep, rua: dados.rua, numero: dados.numero, compl: dados.compl,
         bairro: dados.bairro, cidade: dados.cidade, uf: dados.uf,
@@ -650,6 +702,7 @@ document.addEventListener('vm:ready', function () {
 
       VMFrete.limpar();
       VMCart.limpar();
+      apagarDados();
 
       window.location.href = 'pedido.html?id=' + encodeURIComponent(pedido.id);
     }).catch(function (e) {
@@ -661,6 +714,7 @@ document.addEventListener('vm:ready', function () {
     });
   }
 
+  history.replaceState({ passoCheckout: passo }, '');
   render();
 
   /* Redesenhar o painel inteiro no meio da digitação apagaria o campo em foco,

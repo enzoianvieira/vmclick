@@ -4,6 +4,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* hidden sempre esconde. Sem isto, qualquer classe com display (grid, flex)
+   vence o atributo e o elemento "escondido" continua na tela. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 

@@ -150,22 +150,291 @@
 
   function diasUteis(n) { return n + (n === 1 ? ' dia útil' : ' dias úteis'); }
 
-  /* Uma escolha só por produto: segue o padrão, prazo próprio ou fora. */
-  function seletorEntrega(sku) {
-    var regra = estado.entrega.produtos[sku] || {};
-    var atual = regra.gratis === false ? 'fora' : (regra.prazo ? String(regra.prazo) : '');
-    var classe = atual === 'fora' ? ' is-fora' : (atual ? ' is-proprio' : '');
-    var opcoes = '<option value="">Padrão · ' + diasUteis(estado.entrega.prazoPadrao) + '</option>';
-    for (var n = PRAZO_MIN; n <= 15; n++) {
-      if (n === estado.entrega.prazoPadrao) continue;
-      opcoes += '<option value="' + n + '"' + (atual === String(n) ? ' selected' : '') + '>' + diasUteis(n) + '</option>';
+  var CHEVRON = '<svg class="pick__seta" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /* "28,63" / "28.63" / "1.234,56" -> número; lixo -> NaN */
+  function lerMoeda(v) {
+    var t = String(v || '').trim().replace(/[^\d.,]/g, '');
+    if (t.indexOf(',') > -1) t = t.replace(/\./g, '').replace(',', '.');
+    return t ? Number(t) : NaN;
+  }
+  function moedaCampo(n) { return (Number(n) || 0).toFixed(2).replace('.', ','); }
+  function descontoPct(de, por) { return Math.round((1 - por / de) * 100); }
+
+  /* ---- popover ---------------------------------------------------------
+     Um só por vez, preso ao botão que o abriu. Fecha com Esc, clique fora,
+     rolagem ou mudança de tamanho - rolar com ele aberto o deixaria solto
+     longe do botão. */
+  var pop = null;
+  var popAncora = null;
+
+  function fecharPopover(devolverFoco) {
+    if (!pop) return;
+    pop.remove();
+    pop = null;
+    if (popAncora) {
+      popAncora.setAttribute('aria-expanded', 'false');
+      if (devolverFoco) popAncora.focus();
     }
-    /* prazo próprio acima de 15, digitado antes, não pode sumir da lista */
-    if (regra.prazo > 15) {
-      opcoes += '<option value="' + regra.prazo + '" selected>' + diasUteis(regra.prazo) + '</option>';
+    popAncora = null;
+  }
+
+  function posicionarPopover() {
+    var r = popAncora.getBoundingClientRect();
+    var m = 12;
+    var top = r.bottom + 6;
+    if (top + pop.offsetHeight > window.innerHeight - m && r.top - 6 - pop.offsetHeight > m) {
+      top = r.top - 6 - pop.offsetHeight;
     }
-    opcoes += '<option value="fora"' + (atual === 'fora' ? ' selected' : '') + '>Sem entrega grátis</option>';
-    return '<select class="entrega-sel' + classe + '" data-entrega aria-label="Entrega grátis em Curitiba">' + opcoes + '</select>';
+    var left = Math.min(Math.max(m, r.left), window.innerWidth - pop.offsetWidth - m);
+    pop.style.top = Math.round(top) + 'px';
+    pop.style.left = Math.round(left) + 'px';
+  }
+
+  function abrirPopover(ancora, titulo, html, ligar) {
+    var mesma = popAncora === ancora;
+    fecharPopover();
+    if (mesma) return; /* segundo clique no mesmo botão fecha */
+
+    pop = document.createElement('div');
+    pop.className = 'pop';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', titulo);
+    pop.innerHTML = '<div class="pop__titulo">' + esc(titulo) + '</div>' + html;
+    document.body.appendChild(pop);
+    popAncora = ancora;
+    ancora.setAttribute('aria-expanded', 'true');
+    posicionarPopover();
+    ligar(pop);
+  }
+
+  document.addEventListener('mousedown', function (e) {
+    if (pop && !pop.contains(e.target) && !popAncora.contains(e.target)) fecharPopover();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && pop) { e.stopPropagation(); fecharPopover(true); }
+  }, true);
+  window.addEventListener('scroll', function (e) {
+    if (pop && !pop.contains(e.target)) fecharPopover();
+  }, true);
+  window.addEventListener('resize', function () { fecharPopover(); });
+
+  /* ---- entrega grátis por produto -------------------------------------- */
+
+  function regraEntrega(sku) {
+    var r = estado.entrega.produtos[sku] || {};
+    if (r.gratis === false) return { tipo: 'fora' };
+    if (r.prazo) return { tipo: 'proprio', prazo: r.prazo };
+    return { tipo: 'padrao', prazo: estado.entrega.prazoPadrao };
+  }
+
+  function definirEntrega(sku, tipo, prazo) {
+    if (tipo === 'fora') estado.entrega.produtos[sku] = { gratis: false };
+    /* prazo igual ao padrão não é exceção: volta a seguir o padrão */
+    else if (tipo === 'proprio' && prazo !== estado.entrega.prazoPadrao) estado.entrega.produtos[sku] = { prazo: prazo };
+    else delete estado.entrega.produtos[sku];
+    salvar();
+  }
+
+  function conteudoEntrega(sku) {
+    var r = regraEntrega(sku);
+    return {
+      classe: 'pick pick--' + r.tipo,
+      html: '<span class="pick__texto">' +
+        (r.tipo === 'fora' ? 'Sem entrega grátis'
+          : (r.tipo === 'padrao' ? '<span class="pick__dim">Padrão ·</span> ' : '') + diasUteis(r.prazo)) +
+        '</span>' + CHEVRON,
+    };
+  }
+
+  function pintarBotaoEntrega(bt, sku) {
+    var c = conteudoEntrega(sku);
+    bt.className = c.classe;
+    bt.innerHTML = c.html;
+  }
+
+  function botaoEntrega(sku) {
+    var c = conteudoEntrega(sku);
+    return '<button type="button" class="' + c.classe + '" data-entrega aria-haspopup="dialog" aria-expanded="false" ' +
+      'aria-label="Entrega grátis em Curitiba">' + c.html + '</button>';
+  }
+
+  function abrirEntrega(bt, sku) {
+    var r = regraEntrega(sku);
+    var proprio = r.tipo === 'proprio' ? r.prazo : Math.min(PRAZO_MAX, estado.entrega.prazoPadrao + 2);
+
+    function opcao(tipo, titulo, sub) {
+      return '<button type="button" class="pop__op" role="radio" data-tipo="' + tipo + '" aria-checked="' + (r.tipo === tipo) + '">' +
+        '<span class="pop__radio" aria-hidden="true"></span>' +
+        '<span class="pop__op-texto"><b>' + titulo + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></button>';
+    }
+
+    abrirPopover(bt, 'Entrega grátis em Curitiba',
+      '<div class="pop__ops" role="radiogroup">' +
+        opcao('padrao', 'Padrão da loja', diasUteis(estado.entrega.prazoPadrao)) +
+        '<div class="pop__op pop__op--prazo" role="radio" data-tipo="proprio" aria-checked="' + (r.tipo === 'proprio') + '">' +
+          '<span class="pop__radio" aria-hidden="true"></span>' +
+          '<span class="pop__op-texto"><b>Prazo próprio</b><small>Ex.: item sob encomenda</small></span>' +
+          '<span class="passo-n">' +
+            '<button type="button" data-delta="-1" aria-label="Um dia a menos">−</button>' +
+            '<input type="text" inputmode="numeric" maxlength="2" value="' + proprio + '" aria-label="Prazo próprio em dias úteis">' +
+            '<button type="button" data-delta="1" aria-label="Um dia a mais">+</button>' +
+          '</span>' +
+        '</div>' +
+        opcao('fora', 'Sem entrega grátis', 'Pedido com este item não tem entrega grátis') +
+      '</div>',
+      function (el) {
+        var campo = el.querySelector('.passo-n input');
+
+        function marcar(tipo) {
+          el.querySelectorAll('[role="radio"]').forEach(function (o) {
+            o.setAttribute('aria-checked', String(o.dataset.tipo === tipo));
+          });
+        }
+        function aplicarProprio(n) {
+          n = Math.max(PRAZO_MIN, Math.min(PRAZO_MAX, n));
+          campo.value = n;
+          definirEntrega(sku, 'proprio', n);
+          marcar(regraEntrega(sku).tipo);
+          pintarBotaoEntrega(bt, sku);
+        }
+
+        el.querySelectorAll('button.pop__op').forEach(function (o) {
+          o.addEventListener('click', function () {
+            definirEntrega(sku, o.dataset.tipo);
+            pintarBotaoEntrega(bt, sku);
+            fecharPopover(true);
+          });
+        });
+        el.querySelectorAll('[data-delta]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            aplicarProprio((parseInt(campo.value, 10) || proprio) + Number(b.dataset.delta));
+          });
+        });
+        el.querySelector('.pop__op--prazo').addEventListener('click', function (e) {
+          if (e.target === campo || e.target.closest('[data-delta]')) return;
+          aplicarProprio(parseInt(campo.value, 10) || proprio);
+        });
+        campo.addEventListener('input', function () {
+          campo.value = campo.value.replace(/\D/g, '');
+          var n = parseInt(campo.value, 10);
+          if (n >= PRAZO_MIN && n <= PRAZO_MAX) aplicarProprio(n);
+        });
+        campo.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); fecharPopover(true); }
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            aplicarProprio((parseInt(campo.value, 10) || proprio) + (e.key === 'ArrowUp' ? 1 : -1));
+          }
+        });
+        campo.addEventListener('blur', function () {
+          var n = parseInt(campo.value, 10);
+          if (!(n >= PRAZO_MIN && n <= PRAZO_MAX)) campo.value = proprio;
+        });
+
+        var marcada = el.querySelector('[aria-checked="true"]');
+        if (marcada && marcada.tagName === 'BUTTON') marcada.focus();
+        else if (marcada) campo.focus();
+        else el.querySelector('button.pop__op').focus();
+      });
+  }
+
+  /* ---- oferta ----------------------------------------------------------- */
+
+  function botaoOferta(sku, p) {
+    var o = ofertaDe(sku);
+    if (!o) {
+      return '<button type="button" class="pick pick--vazio" data-oferta aria-haspopup="dialog" aria-expanded="false">' +
+        '<span class="pick__texto">+ Definir</span></button>';
+    }
+    return '<button type="button" class="pick pick--oferta" data-oferta aria-haspopup="dialog" aria-expanded="false" aria-label="Editar oferta">' +
+      '<span class="pick__texto"><span class="pick__dim">De</span> ' + moeda(o.precoDe) + '</span>' +
+      (p && o.precoDe > p.preco ? '<span class="pick__off">−' + descontoPct(o.precoDe, p.preco) + '%</span>' : '') +
+      CHEVRON + '</button>';
+  }
+
+  function abrirOferta(bt, sku) {
+    var p = produtoPorSku(sku);
+    var o = ofertaDe(sku);
+    if (!p) return;
+
+    abrirPopover(bt, 'Oferta da semana',
+      '<p class="pop__nota">Preço atual <b>' + moeda(p.preco) + '</b>. Informe o preço anterior, que aparece riscado na vitrine.</p>' +
+      '<label class="pop__rotulo" for="pop-de">Preço anterior (de)</label>' +
+      '<div class="moeda-campo"><span>R$</span><input id="pop-de" type="text" inputmode="decimal" autocomplete="off" ' +
+        'placeholder="0,00" value="' + (o ? moedaCampo(o.precoDe) : '') + '"></div>' +
+      '<p class="pop__previa" id="pop-previa" aria-live="polite"></p>' +
+      '<div class="pop__rodape">' +
+        (o ? '<button type="button" class="bt bt--mini bt--perigo" data-remover-oferta>Remover oferta</button>' : '<span></span>') +
+        '<div class="bt-linha">' +
+          '<button type="button" class="bt bt--mini bt--linha" data-cancelar>Cancelar</button>' +
+          '<button type="button" class="bt bt--mini bt--principal" data-salvar disabled>Salvar</button>' +
+        '</div>' +
+      '</div>',
+      function (el) {
+        var campo = el.querySelector('#pop-de');
+        var previa = el.querySelector('#pop-previa');
+        var salvarBt = el.querySelector('[data-salvar]');
+
+        /* preço "de" tem de ser maior que o preço atual, senão o desconto é
+           mentira - e anunciar desconto que não existe é infração ao CDC */
+        function conferir() {
+          var de = lerMoeda(campo.value);
+          var ok = de > p.preco && de < 1e6;
+          var mudou = !o || Math.round(de * 100) !== Math.round(o.precoDe * 100);
+          previa.className = 'pop__previa' + (campo.value && !ok ? ' is-erro' : '');
+          previa.innerHTML = !campo.value
+            ? 'O desconto é calculado a partir do preço anterior.'
+            : (ok
+              ? '<s>' + moeda(de) + '</s> por <b>' + moeda(p.preco) + '</b> · ' + descontoPct(de, p.preco) + '% off'
+              : 'Precisa ser maior que o preço atual. Desconto que não existiu é propaganda enganosa (CDC, art. 37).');
+          salvarBt.disabled = !(ok && mudou);
+          return ok ? de : null;
+        }
+
+        function gravar() {
+          var de = conferir();
+          if (de == null || salvarBt.disabled) return;
+          de = Math.round(de * 100) / 100;
+          if (o) o.precoDe = de; else estado.ofertas.push({ sku: sku, precoDe: de });
+          salvar();
+          fecharPopover();
+          redesenharOferta(sku);
+          aviso('Oferta salva. Publique para valer no site.');
+        }
+
+        campo.addEventListener('input', conferir);
+        campo.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); gravar(); }
+        });
+        salvarBt.addEventListener('click', gravar);
+        el.querySelector('[data-cancelar]').addEventListener('click', function () { fecharPopover(true); });
+
+        var remover = el.querySelector('[data-remover-oferta]');
+        if (remover) remover.addEventListener('click', function () {
+          estado.ofertas = estado.ofertas.filter(function (x) { return x.sku !== sku; });
+          salvar();
+          fecharPopover();
+          redesenharOferta(sku);
+          aviso('Oferta removida. Publique para valer no site.');
+        });
+
+        conferir();
+        campo.focus();
+        campo.select();
+      });
+  }
+
+  /* Redesenha só a célula da oferta: a tabela inteira perderia a rolagem. */
+  function redesenharOferta(sku) {
+    var cel = null;
+    $$('#lista-produtos tr[data-sku]').some(function (tr) {
+      if (tr.dataset.sku === sku) { cel = tr.querySelector('[data-cel-oferta]'); return true; }
+      return false;
+    });
+    if (!cel) return;
+    cel.innerHTML = botaoOferta(sku, produtoPorSku(sku));
+    cel.querySelector('[data-oferta]').focus();
   }
 
   function renderProdutos() {
@@ -178,7 +447,6 @@
                '<span class="selo selo--aviso">aguardando sincronização</span></td></tr>';
       }
       var destaque = estado.destaques.indexOf(sku) > -1;
-      var oferta = ofertaDe(sku);
       var frete = temFrete(p);
 
       return '<tr data-sku="' + esc(sku) + '">' +
@@ -189,11 +457,9 @@
         '<td>' + (frete
           ? '<span class="selo selo--ok">ok</span>'
           : '<span class="selo selo--alerta">sem peso</span>') + '</td>' +
-        '<td>' + seletorEntrega(sku) + '</td>' +
-        '<td><input type="checkbox" data-destaque' + (destaque ? ' checked' : '') + '></td>' +
-        '<td>' + (oferta
-          ? '<input type="number" step="0.01" min="0" value="' + oferta.precoDe + '" data-precode style="width:96px">'
-          : '<button class="bt bt--mini bt--linha" type="button" data-add-oferta>Definir</button>') + '</td>' +
+        '<td>' + botaoEntrega(sku) + '</td>' +
+        '<td><input type="checkbox" class="caixa" data-destaque aria-label="Destaque na home"' + (destaque ? ' checked' : '') + '></td>' +
+        '<td data-cel-oferta>' + botaoOferta(sku, p) + '</td>' +
         '<td><button class="bt bt--mini bt--perigo" type="button" data-remover>Tirar do site</button></td>' +
       '</tr>';
     }).join('');
@@ -230,12 +496,11 @@
       aviso('Produto tirado do site. Publique para valer no ar.');
     }
 
-    if (e.target.matches('[data-add-oferta]')) {
-      var p = produtoPorSku(sku);
-      var sugerido = p ? (Math.round(p.preco * 1.25 * 100) / 100) : 0;
-      estado.ofertas.push({ sku: sku, precoDe: sugerido });
-      salvar(); renderProdutos();
-    }
+    var btEntrega = e.target.closest('[data-entrega]');
+    if (btEntrega) abrirEntrega(btEntrega, sku);
+
+    var btOferta = e.target.closest('[data-oferta]');
+    if (btOferta) abrirOferta(btOferta, sku);
   });
 
   $('#lista-produtos').addEventListener('change', function (e) {
@@ -249,32 +514,6 @@
       } else {
         estado.destaques = estado.destaques.filter(function (s) { return s !== sku; });
       }
-      salvar();
-    }
-
-    if (e.target.matches('[data-entrega]')) {
-      var v = e.target.value;
-      if (v === 'fora') estado.entrega.produtos[sku] = { gratis: false };
-      else if (v) estado.entrega.produtos[sku] = { prazo: parseInt(v, 10) };
-      else delete estado.entrega.produtos[sku];
-      e.target.className = 'entrega-sel' + (v === 'fora' ? ' is-fora' : (v ? ' is-proprio' : ''));
-      salvar();
-    }
-
-    if (e.target.matches('[data-precode]')) {
-      var valor = parseFloat(e.target.value);
-      var p = produtoPorSku(sku);
-      var oferta = ofertaDe(sku);
-      if (!oferta) return;
-
-      /* preço "de" tem de ser maior que o preço atual, senão o desconto é
-         mentira — e anunciar desconto que não existe é infração ao CDC */
-      if (!valor || (p && valor <= p.preco)) {
-        aviso('O preço anterior precisa ser maior que o preço atual. Desconto que não existiu é propaganda enganosa.', true);
-        e.target.value = oferta.precoDe;
-        return;
-      }
-      oferta.precoDe = valor;
       salvar();
     }
   });

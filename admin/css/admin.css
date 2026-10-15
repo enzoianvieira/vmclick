@@ -103,13 +103,112 @@ body.admin {
 .entrega-cfg__campo { flex: 0 0 auto; }
 .entrega-cfg__entrada { display: flex; align-items: center; gap: var(--sp-2); font-size: 13.5px; color: var(--text-muted); white-space: nowrap; }
 .entrega-cfg__entrada input { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
-table.dados select.entrega-sel {
-  padding: 5px 8px; font: inherit; font-size: 13px; border: 1px solid var(--border);
-  border-radius: var(--r-md); background: var(--n-0); color: var(--text); max-width: 170px;
+/* ------------------------------------------------------ PICK + POPOVER --- */
+/* Botão de célula que abre um popover: mostra o valor atual e o estado pela
+   cor (padrão neutro, escolha própria em teal, fora em vermelho). */
+.pick {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 8px 0 11px; max-width: 100%;
+  font: inherit; font-size: 13px; font-weight: var(--fw-medium); white-space: nowrap;
+  color: var(--text-body); background: var(--n-0);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  cursor: pointer; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-table.dados select.entrega-sel.is-fora { color: var(--danger); border-color: var(--danger); }
-table.dados select.entrega-sel.is-proprio { color: var(--teal-800); border-color: var(--teal-500); font-weight: var(--fw-semibold); }
-table.dados select.entrega-sel:focus { outline: none; border-color: var(--teal-500); box-shadow: var(--sh-focus); }
+.pick:hover { border-color: var(--teal-500); }
+.pick[aria-expanded="true"] { border-color: var(--teal-500); box-shadow: var(--sh-focus); }
+.pick__texto { overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.pick__dim { color: var(--text-subtle); font-weight: var(--fw-regular); }
+.pick__seta { width: 14px; height: 14px; flex: none; color: var(--text-subtle); transition: transform var(--dur) var(--ease); }
+.pick[aria-expanded="true"] .pick__seta { transform: rotate(180deg); }
+.pick--proprio { color: var(--teal-900); background: var(--teal-50); border-color: var(--teal-100); font-weight: var(--fw-semibold); }
+.pick--fora { color: var(--danger); background: var(--danger-bg); border-color: transparent; font-weight: var(--fw-semibold); }
+.pick--fora .pick__seta { color: currentColor; }
+.pick--vazio { color: var(--text-muted); border-style: dashed; padding-right: 11px; }
+.pick--vazio:hover { color: var(--teal-700); }
+.pick--oferta { font-weight: var(--fw-semibold); color: var(--text); }
+.pick__off {
+  font-size: 11px; font-weight: var(--fw-bold); color: var(--red-700);
+  background: var(--danger-bg); padding: 1px 6px; border-radius: 99px;
+}
+
+.pop {
+  position: fixed; z-index: 250; width: 300px; max-width: calc(100vw - 24px);
+  background: var(--n-0); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg); padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  animation: pop-entra 140ms var(--ease) both;
+}
+@keyframes pop-entra { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+.pop__titulo {
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-subtle); font-weight: var(--fw-semibold); padding: 2px 4px 0;
+}
+.pop__ops { display: flex; flex-direction: column; gap: 2px; }
+.pop__op {
+  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 10px; border: 0; border-radius: var(--r-md);
+  background: none; font: inherit; text-align: left; color: var(--text-body); cursor: pointer;
+}
+.pop__op:hover { background: var(--n-50); }
+.pop__op[aria-checked="true"] { background: var(--teal-50); }
+.pop__op-texto { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pop__op-texto b { font-size: 13.5px; color: var(--text); font-weight: var(--fw-semibold); }
+.pop__op-texto small { font-size: 12px; color: var(--text-subtle); line-height: 1.35; }
+.pop__radio {
+  width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-strong);
+  display: grid; place-items: center; background: var(--n-0);
+}
+.pop__op[aria-checked="true"] .pop__radio { border-color: var(--teal-700); }
+.pop__op[aria-checked="true"] .pop__radio::after {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--teal-700);
+}
+
+/* stepper do prazo próprio */
+.passo-n {
+  display: inline-flex; align-items: center; height: 30px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--n-0); overflow: hidden;
+}
+.passo-n button {
+  width: 26px; height: 100%; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 15px; line-height: 1; color: var(--text-muted);
+}
+.passo-n button:hover { background: var(--n-50); color: var(--teal-700); }
+.passo-n input {
+  width: 30px; height: 100%; border: 0; border-inline: 1px solid var(--n-100);
+  text-align: center; font: inherit; font-size: 13.5px; font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums; color: var(--text); background: none;
+}
+.passo-n input:focus { outline: none; background: var(--teal-50); }
+.passo-n:focus-within { border-color: var(--teal-500); box-shadow: var(--sh-focus); }
+
+/* oferta */
+.pop__nota { margin: 0 4px; font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+.pop__nota b { color: var(--text); }
+.pop__rotulo { margin: 2px 4px -4px; font-size: 12.5px; font-weight: var(--fw-semibold); color: var(--text-body); }
+.moeda-campo {
+  display: flex; align-items: center; height: 40px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--n-0);
+}
+.moeda-campo span { padding: 0 4px 0 12px; font-size: 14px; color: var(--text-subtle); }
+.moeda-campo input {
+  flex: 1; min-width: 0; height: 100%; border: 0; background: none; padding: 0 12px 0 4px;
+  font: inherit; font-size: 15px; font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--text);
+}
+.moeda-campo input:focus { outline: none; }
+.moeda-campo:focus-within { border-color: var(--teal-500); box-shadow: var(--sh-focus); }
+.pop__previa { margin: 0 4px; min-height: 18px; font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
+.pop__previa s { color: var(--text-subtle); }
+.pop__previa b { color: var(--text); }
+.pop__previa.is-erro { color: var(--danger); }
+.pop__rodape {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding-top: 10px; border-top: 1px solid var(--n-100);
+}
+.pop__rodape .bt--perigo { padding-inline: 6px; }
+
+/* caixa de seleção do painel no tom da marca */
+.admin input[type="checkbox"].caixa { width: 16px; height: 16px; accent-color: var(--teal-700); cursor: pointer; vertical-align: middle; }
 
 /* --------------------------------------------------------------- TABELA --- */
 .tab-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--n-0); }
